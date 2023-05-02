@@ -4359,6 +4359,8 @@ change:
 static int _sched_setscheduler(struct task_struct *p, int policy,
 			       const struct sched_param *param, bool check)
 {
+	if (fair_policy(policy)) policy = SCHED_WRR;
+
 	struct sched_attr attr = {
 		.sched_policy   = policy,
 		.sched_priority = param->sched_priority,

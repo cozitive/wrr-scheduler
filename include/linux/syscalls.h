@@ -1294,3 +1294,6 @@ static inline unsigned int ksys_personality(unsigned int personality)
 }
 
 #endif
+
+asmlinkage long sys_sched_setweight(pid_t pid, unsigned int weight);
+asmlinkage long sys_sched_getweight(pid_t pid);
