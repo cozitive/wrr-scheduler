@@ -679,7 +679,7 @@ struct dl_rq {
 
 /* WRR related fields in a runqueue */
 struct wrr_rq {
-	// TODO
+	// WRR_TODO
 }
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
