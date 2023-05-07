@@ -2333,7 +2333,8 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
 	else
-		p->sched_class = &fair_sched_class;
+		/* Every normal task should be assigned to the WRR scheduler. */
+		p->sched_class = &wrr_sched_class;
 
 	init_entity_runnable_average(&p->se);
 
@@ -4359,6 +4360,7 @@ change:
 static int _sched_setscheduler(struct task_struct *p, int policy,
 			       const struct sched_param *param, bool check)
 {
+	/* Changing a task's scheduler to the CFS scheduler should be redirected: the task is instead sent to the WRR scheduler. */
 	if (fair_policy(policy)) policy = SCHED_WRR;
 
 	struct sched_attr attr = {
