@@ -680,7 +680,7 @@ struct dl_rq {
 /* WRR related fields in a runqueue */
 struct wrr_rq {
 	// WRR_TODO
-}
+};
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 /* An entity is a task if it doesn't "own" a runqueue */

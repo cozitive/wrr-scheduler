@@ -571,7 +571,8 @@ struct sched_wrr_entity {
 	// WRR_TODO
 	unsigned int weight;
 	unsigned int time_slice;
-}
+};
+
 union rcu_special {
 	struct {
 		u8			blocked;
@@ -655,7 +656,7 @@ struct task_struct {
 #endif
 	struct sched_dl_entity		dl;
 
-	struct sched_wrr_entity 	   wrr;
+	struct sched_wrr_entity		wrr;
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	/* List of struct preempt_notifier: */
