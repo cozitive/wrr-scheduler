@@ -4095,7 +4095,7 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
 	else
-		p->sched_class = &fair_sched_class;
+		p->sched_class = &wrr_sched_class;
 }
 
 /*
