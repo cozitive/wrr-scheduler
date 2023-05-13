@@ -680,6 +680,9 @@ struct dl_rq {
 /* WRR related fields in a runqueue */
 struct wrr_rq {
 	// WRR_TODO
+	struct list_head queue;		// head of task queue
+	int bit;					// whether task is in a queue
+	unsigned int nr_running;	// # of running tasks
 };
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -2066,6 +2069,7 @@ print_numa_stats(struct seq_file *m, int node, unsigned long tsf,
 #endif /* CONFIG_NUMA_BALANCING */
 #endif /* CONFIG_SCHED_DEBUG */
 
+extern void init_wrr_rq(struct wrr_rq *wrr_rq);
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq);
 extern void init_dl_rq(struct dl_rq *dl_rq);

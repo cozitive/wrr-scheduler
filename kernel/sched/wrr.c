@@ -3,11 +3,25 @@
  */
 #include "sched.h"
 
-
-static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
-	// WRR_TODO
+/**
+ * Initialize a WRR runqueue.
+ */
+void init_wrr_rq(struct wrr_rq *wrr_rq) {
+	INIT_LIST_HEAD(wrr_rq->queue);
+	wrr_rq->bit = 0;
+	wrr_rq->nr_running = 0;
 }
 
+/**
+ * Enqueue a task to WRR runqueue.
+ */
+static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
+	// TODO: add `p` to `rq->wrr`
+}
+
+/**
+ * Dequeue a task from WRR runqueue.
+ */
 static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 	// WRR_TODO
 }
@@ -78,8 +92,11 @@ static void prio_changed_wrr(struct rq *this_rq, struct task_struct *task, int o
 	// WRR_TODO
 }
 
+/**
+ * Returns WRR timeslice based on task's weight.
+ */
 static unsigned int get_rr_interval_wrr(struct rq *rq, struct task_struct *task) {
-	// WRR_TODO
+	return task->wrr->weight * 10;
 }
 
 static void update_curr_wrr(struct rq *rq) {
