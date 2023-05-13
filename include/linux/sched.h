@@ -571,6 +571,10 @@ struct sched_wrr_entity {
 	// WRR_TODO
 	unsigned int weight;
 	unsigned int time_slice;
+
+	struct list_head run_list;
+	unsigned short on_rq;
+	// unsigned short on_list;
 };
 
 union rcu_special {
