@@ -39,20 +39,6 @@ static inline int on_wrr_rq(struct sched_wrr_entity *wrr_se) {
 	return wrr_se->on_rq;
 }
 
-#ifdef CONFIG_SMP
-static void enqueue_pushable_task_wrr(struct rq *rq, struct task_struct *p) {
-	// TODO
-}
-
-static void dequeue_pushable_task_wrr(struct rq *rq, struct task_struct *p) {
-	// TODO
-}
-#endif
-
-static inline void enqueue_pushable_task_wrr(struct rq *rq, struct task_struct *p) {}
-
-static inline void dequeue_pushable_task_wrr(struct rq *rq, struct task_struct *p) {}
-
 /// @brief Increment runqueue variables after the enqueue.
 static inline void inc_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq *wrr_rq) {
 	wrr_rq->nr_running += 1;
@@ -92,11 +78,6 @@ static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 
 		// increment runqueue variables
 		inc_wrr_tasks(wrr_se, wrr_rq);
-
-		// SMP
-		if (!task_current(rq, p) && p->nr_cpus_allowed > 1) {
-			enqueue_pushable_task_wrr(rq, p);
-		}
 	}
 }
 
@@ -124,9 +105,6 @@ static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 		// decrement runqueue variables
 		dec_wrr_tasks(wrr_se, wrr_rq);
 	}
-
-	// SMP
-	dequeue_pushable_task_wrr(rq, p);
 }
 
 static void yield_task_wrr(struct rq *rq) {
@@ -156,10 +134,7 @@ static void struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_st
 	return p;
 }
 
-static void put_prev_task_wrr(struct rq *rq, struct task_struct *p) {
-	if (on_wrr_rq(&p->wrr) && p->nr_cpus_allowed > 1)
-		enqueue_pushable_task_wrr(rq, p);
-}
+static void put_prev_task_wrr(struct rq *rq, struct task_struct *p) {}
 
 #ifdef CONFIG_SMP
 static int select_task_rq_wrr(struct task_struct *p, int task_cpu, int sd_flag, int flags) {
