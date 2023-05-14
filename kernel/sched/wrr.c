@@ -108,7 +108,12 @@ static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 }
 
 static void yield_task_wrr(struct rq *rq) {
-	// WRR_TODO
+	struct sched_wrr_entity *wrr_se = &rq->curr->wrr;
+	struct wrr_rq *wrr_rq = rq->wrr;
+
+	if (on_wrr_rq(wrr_se)) {
+		list_move(&wrr_se->run_list, wrr_rq->queue);
+	}
 }
 
 static void check_preempt_curr_wrr(struct rq *rq, struct task_struct *p, int flags) {
