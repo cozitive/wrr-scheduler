@@ -116,10 +116,6 @@ static void yield_task_wrr(struct rq *rq) {
 	}
 }
 
-static void check_preempt_curr_wrr(struct rq *rq, struct task_struct *p, int flags) {
-	// WRR_TODO
-}
-
 /// @brief Pick next task from WRR runqueue.
 /// @param rq a runqueue.
 /// @param prev previously executed task.
