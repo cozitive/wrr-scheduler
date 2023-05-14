@@ -78,7 +78,7 @@ static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 	if (move_entity(flags)) {
 		// assume `wrr_se` is not in the queue
 		WARN_ON_ONCE(wrr_se->on_rq);
-		
+
 		// if ENQUEUE_HEAD, insert `wrr_se` at the head
         // if !ENQUEUE_HEAD, insert `wrr_se` at the tail
 		if (flags & ENQUEUE_HEAD)
@@ -137,12 +137,28 @@ static void check_preempt_curr_wrr(struct rq *rq, struct task_struct *p, int fla
 	// WRR_TODO
 }
 
+/// @brief Pick next task from WRR runqueue.
+/// @param rq a runqueue.
+/// @param prev previously executed task.
+/// @param rf runqueue flags.
 static void struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct *prev, struct rq_flags *rf) {
-	// WRR_TODO
+	struct wrr_rq *wrr_rq = &rq->wrr;
+	struct task_struct *p;
+	struct sched_wrr_entity *wrr_se;
+
+	put_prev_task(rq, prev);
+
+	wrr_se = list_entry(wrr_rq->queue->next, struct sched_wrr_entity, run_list);
+	BUG_ON(!wrr_se);
+
+	p = wrr_task_of(wrr_se);
+
+	return p;
 }
 
 static void put_prev_task_wrr(struct rq *rq, struct task_struct *p) {
-	// WRR_TODO
+	if (on_wrr_rq(&p->wrr) && p->nr_cpus_allowed > 1)
+		enqueue_pushable_task_wrr(rq, p);
 }
 
 #ifdef CONFIG_SMP
