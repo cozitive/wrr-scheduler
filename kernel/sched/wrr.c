@@ -3,12 +3,17 @@
  */
 #include "sched.h"
 
-extern static inline bool move_entity(unsigned int flags);
+static inline int move_entity(unsigned int flags) {
+	if ((flags & (DEQUEUE_SAVE | DEQUEUE_MOVE)) == DEQUEUE_SAVE)
+		return 0;
+
+	return 1;
+}
 
 /// @brief Initialize a WRR runqueue.
 /// @param wrr_rq WRR runqueue to initiate.
 void init_wrr_rq(struct wrr_rq *wrr_rq) {
-	INIT_LIST_HEAD(wrr_rq->queue);
+	INIT_LIST_HEAD(&wrr_rq->queue);
 	wrr_rq->bit = 0;
 	wrr_rq->nr_running = 0;
 }
@@ -20,7 +25,7 @@ static inline struct task_struct *wrr_task_of(struct sched_wrr_entity *wrr_se) {
 
 /// @brief Get the runqueue of a WRR runqueue.
 static inline struct rq *rq_of_wrr_rq(struct wrr_rq *wrr_rq) {
-	return container_of(wrr_rq, struct rq, wrr)
+	return container_of(wrr_rq, struct rq, wrr);
 }
 
 /// @brief Get the runqueue of a WRR scheduler entity.
@@ -68,9 +73,9 @@ static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 		// if ENQUEUE_HEAD, insert `wrr_se` at the head
         // if !ENQUEUE_HEAD, insert `wrr_se` at the tail
 		if (flags & ENQUEUE_HEAD)
-            list_add(&wrr_se->run_list, wrr_rq->queue);
+            list_add(&wrr_se->run_list, &wrr_rq->queue);
         else
-            list_add_tail(&wrr_se->run_list, wrr_rq->queue);
+            list_add_tail(&wrr_se->run_list, &wrr_rq->queue);
 
 		// set flag
 		wrr_rq->bit = 1;
@@ -98,7 +103,7 @@ static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 		list_del_init(&wrr_se->run_list);
 
 		// set flag
-		if (list_empty(wrr_rq->queue))
+		if (list_empty(&wrr_rq->queue))
 			wrr_rq->bit = 0;
 		wrr_se->on_rq = 0;
 
@@ -109,10 +114,10 @@ static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 
 static void requeue_task_wrr(struct rq *rq, struct task_struct *p) {
 	struct sched_wrr_entity *wrr_se = &p->wrr;
-	struct wrr_rq *wrr_rq = rq->wrr;
+	struct wrr_rq *wrr_rq = &rq->wrr;
 
 	if (on_wrr_rq(wrr_se)) {
-		list_move(&wrr_se->run_list, wrr_rq->queue);
+		list_move(&wrr_se->run_list, &wrr_rq->queue);
 	}
 }
 
@@ -124,14 +129,14 @@ static void yield_task_wrr(struct rq *rq) {
 /// @param rq a runqueue.
 /// @param prev previously executed task.
 /// @param rf runqueue flags.
-static void struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct *prev, struct rq_flags *rf) {
+static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct *prev, struct rq_flags *rf) {
 	struct wrr_rq *wrr_rq = &rq->wrr;
 	struct task_struct *p;
 	struct sched_wrr_entity *wrr_se;
 
 	put_prev_task(rq, prev);
 
-	wrr_se = list_entry(wrr_rq->queue->next, struct sched_wrr_entity, run_list);
+	wrr_se = list_entry(wrr_rq->queue.next, struct sched_wrr_entity, run_list);
 	BUG_ON(!wrr_se);
 
 	p = wrr_task_of(wrr_se);
@@ -141,27 +146,27 @@ static void struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_st
 
 static void put_prev_task_wrr(struct rq *rq, struct task_struct *p) {}
 
-#ifdef CONFIG_SMP
-static int select_task_rq_wrr(struct task_struct *p, int task_cpu, int sd_flag, int flags) {
-	// WRR_TODO
-}
+// #ifdef CONFIG_SMP
+// static int select_task_rq_wrr(struct task_struct *p, int task_cpu, int sd_flag, int flags) {
+// 	return 0;
+// }
 
-static void migrate_task_rq_wrr(struct task_struct *p, int new_cpu) {
-	// WRR_TODO
-}
+// static void migrate_task_rq_wrr(struct task_struct *p, int new_cpu) {
+// 	// WRR_TODO
+// }
 
-static void task_woken_wrr(struct rq *this_rq, struct task_struct *task) {
-	// WRR_TODO
-}
+// static void task_woken_wrr(struct rq *this_rq, struct task_struct *task) {
+// 	// WRR_TODO
+// }
 
-static void rq_online_wrr(struct rq *rq) {
-	// WRR_TODO
-}
+// static void rq_online_wrr(struct rq *rq) {
+// 	// WRR_TODO
+// }
 
-static void rq_offline_wrr(struct rq *rq) {
-	// WRR_TODO
-}
-#endif
+// static void rq_offline_wrr(struct rq *rq) {
+// 	// WRR_TODO
+// }
+// #endif
 
 static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued) {
 	struct sched_wrr_entity *wrr_se = &p->wrr;
@@ -190,14 +195,14 @@ const struct sched_class wrr_sched_class = {
 	.pick_next_task = pick_next_task_wrr,
 	.put_prev_task = put_prev_task_wrr,
 
-#ifdef CONFIG_SMP
-	.select_task_rq = select_task_rq_wrr,
-	.migrate_task_rq = migrate_task_rq_wrr,
-	.task_woken = task_woken_wrr,
-	.set_cpus_allowed = set_cpus_allowed_common,
-	.rq_online = rq_online_wrr,
-	.rq_offline = rq_offline_wrr,
-#endif
+// #ifdef CONFIG_SMP
+// 	.select_task_rq = select_task_rq_wrr,
+// 	.migrate_task_rq = migrate_task_rq_wrr,
+// 	.task_woken = task_woken_wrr,
+// 	.set_cpus_allowed = set_cpus_allowed_common,
+// 	.rq_online = rq_online_wrr,
+// 	.rq_offline = rq_offline_wrr,
+// #endif
 
 	.task_tick = task_tick_wrr,
 	.get_rr_interval = get_rr_interval_wrr,
