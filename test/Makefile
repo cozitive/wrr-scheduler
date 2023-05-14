@@ -8,7 +8,7 @@ all: $(TARGETS) $(OBJECTS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-%: %.c
+%: %.c $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $<
 
 clean:
