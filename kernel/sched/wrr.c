@@ -386,7 +386,7 @@ static __latent_entropy void run_rebalance_domains(struct softirq_action *h)
 }
 
 /*
- * Trigger the SCHED_SOFTIRQ if it is time to do periodic load balancing.
+ * Trigger the SCHED_SOFTIRQ_WRR if it is time to do periodic load balancing.
  */
 void trigger_load_balance_wrr(struct rq *rq)
 {
@@ -394,10 +394,10 @@ void trigger_load_balance_wrr(struct rq *rq)
 	if (unlikely(on_null_domain(rq)))
 		return;
 
-	/* trigger_load_balance() checks a timer and if balancing is due, it fires the soft irq with the corresponding flag SCHED_SOFTIRQ. */
+	/* trigger_load_balance_wrr() checks a timer and if balancing is due, it fires the soft irq with the corresponding flag SCHED_SOFTIRQ_WRR. */
 	if (time_after_eq(jiffies, rq->next_balance_wrr))
 		raise_softirq(
-			SCHED_SOFTIRQ); // The function registered as irq handler is run_rebalance_domains()
+			SCHED_SOFTIRQ_WRR);
 }
 
 static inline void update_next_balance_wrr(struct sched_domain *sd,
@@ -416,6 +416,6 @@ static inline void update_next_balance_wrr(struct sched_domain *sd,
 __init void init_sched_wrr_class(void)
 {
 #ifdef CONFIG_SMP
-	open_softirq(SCHED_SOFTIRQ, run_rebalance_domains);
+	open_softirq(SCHED_SOFTIRQ_WRR, run_rebalance_domains);
 #endif /* SMP */
 }
