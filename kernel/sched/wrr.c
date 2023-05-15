@@ -270,9 +270,96 @@ static int load_balance(int this_cpu, struct rq *this_rq,
  *
  * Balancing parameters are set up in init_sched_domains.
  */
+/* rebalance_domains() then walks up the domain hierarchy and calls load_balance() if the domain has the SD_LOAD_BALANCE flag set and its balancing interval is expired. The balancing interval of a domain is in jiffies and updated after each balancing run. */
 static void rebalance_domains(struct rq *rq, enum cpu_idle_type idle)
 {
-	// LB_TODO
+	int continue_balancing = 1;
+	int cpu = rq->cpu;
+	unsigned long interval;
+	struct sched_domain *sd;
+	/* Earliest time when we have to do rebalance again */
+	unsigned long next_balance = jiffies + 60 * HZ;
+	int update_next_balance = 0;
+	int need_serialize, need_decay = 0;
+	u64 max_cost = 0;
+
+	rcu_read_lock();
+	for_each_domain(cpu, sd)
+	{
+		/*
+		 * Decay the newidle max times here because this is a regular
+		 * visit to all the domains. Decay ~1% per second.
+		 */
+		if (time_after(jiffies, sd->next_decay_max_lb_cost)) {
+			sd->max_newidle_lb_cost =
+				(sd->max_newidle_lb_cost * 253) / 256;
+			sd->next_decay_max_lb_cost = jiffies + HZ;
+			need_decay = 1;
+		}
+		max_cost += sd->max_newidle_lb_cost;
+
+		if (!(sd->flags & SD_LOAD_BALANCE))
+			continue;
+
+		/*
+		 * Stop the load balance at this level. There is another
+		 * CPU in our sched group which is doing load balancing more
+		 * actively.
+		 */
+		if (!continue_balancing) {
+			if (need_decay)
+				continue;
+			break;
+		}
+
+		interval = get_sd_balance_interval(sd, idle != CPU_IDLE);
+
+		need_serialize = sd->flags & SD_SERIALIZE;
+		if (need_serialize) {
+			if (!spin_trylock(&balancing))
+				goto out;
+		}
+
+		if (time_after_eq(jiffies, sd->last_balance + interval)) {
+			if (load_balance(cpu, rq, sd, idle,
+					 &continue_balancing)) {
+				/*
+				 * The LBF_DST_PINNED logic could have changed
+				 * env->dst_cpu, so we can't know our idle
+				 * state even if we migrated tasks. Update it.
+				 */
+				idle = idle_cpu(cpu) ? CPU_IDLE : CPU_NOT_IDLE;
+			}
+			sd->last_balance = jiffies;
+			interval =
+				get_sd_balance_interval(sd, idle != CPU_IDLE);
+		}
+		if (need_serialize)
+			spin_unlock(&balancing);
+	out:
+		if (time_after(next_balance, sd->last_balance + interval)) {
+			next_balance = sd->last_balance + interval;
+			update_next_balance = 1;
+		}
+	}
+	if (need_decay) {
+		/*
+		 * Ensure the rq-wide value also decays but keep it at a
+		 * reasonable floor to avoid funnies with rq->avg_idle.
+		 */
+		rq->max_idle_balance_cost =
+			max((u64)sysctl_sched_migration_cost, max_cost);
+	}
+	rcu_read_unlock();
+
+	/*
+	 * next_balance will be updated only when there is a need.
+	 * When the cpu is attached to null domain for ex, it will not be
+	 * updated.
+	 */
+	if (likely(update_next_balance)) {
+		rq->next_balance = next_balance;
+	}
 }
 
 /*
@@ -286,24 +373,12 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 
 /*
  * run_rebalance_domains is triggered when needed from the scheduler tick.
- * Also triggered for nohz idle balancing (with nohz_balancing_kick set).
  */
 static __latent_entropy void run_rebalance_domains(struct softirq_action *h)
 {
 	struct rq *this_rq = this_rq();
 	enum cpu_idle_type idle =
 		this_rq->idle_balance ? CPU_IDLE : CPU_NOT_IDLE;
-
-	/*
-	 * If this CPU has a pending nohz_balance_kick, then do the
-	 * balancing on behalf of the other idle CPUs whose ticks are
-	 * stopped. Do nohz_idle_balance *before* rebalance_domains to
-	 * give the idle CPUs a chance to load balance. Else we may
-	 * load balance only within the local sched_domain hierarchy
-	 * and abort nohz_idle_balance altogether if we pull some load.
-	 */
-	if (nohz_idle_balance(this_rq, idle))
-		return;
 
 	/* normal load balance */
 	update_blocked_averages(this_rq->cpu);
@@ -313,22 +388,20 @@ static __latent_entropy void run_rebalance_domains(struct softirq_action *h)
 /*
  * Trigger the SCHED_SOFTIRQ if it is time to do periodic load balancing.
  */
-void trigger_load_balance(struct rq *rq)
+void trigger_load_balance_wrr(struct rq *rq)
 {
 	/* Don't need to rebalance while attached to NULL domain */
 	if (unlikely(on_null_domain(rq)))
 		return;
 
 	/* trigger_load_balance() checks a timer and if balancing is due, it fires the soft irq with the corresponding flag SCHED_SOFTIRQ. */
-	if (time_after_eq(jiffies, rq->next_balance))
+	if (time_after_eq(jiffies, rq->next_balance_wrr))
 		raise_softirq(
 			SCHED_SOFTIRQ); // The function registered as irq handler is run_rebalance_domains()
-
-	nohz_balancer_kick(rq);
 }
 
-static inline void update_next_balance(struct sched_domain *sd,
-				       unsigned long *next_balance)
+static inline void update_next_balance_wrr(struct sched_domain *sd,
+				       unsigned long *next_balance_wrr)
 {
 	unsigned long interval, next;
 
@@ -336,19 +409,13 @@ static inline void update_next_balance(struct sched_domain *sd,
 	interval = msecs_to_jiffies(2000); // Load balance every 2000 ms
 	next = sd->last_balance + interval;
 
-	if (time_after(*next_balance, next))
-		*next_balance = next;
+	if (time_after(*next_balance_wrr, next))
+		*next_balance_wrr = next;
 }
 
 __init void init_sched_wrr_class(void)
 {
 #ifdef CONFIG_SMP
 	open_softirq(SCHED_SOFTIRQ, run_rebalance_domains);
-
-#ifdef CONFIG_NO_HZ_COMMON
-	nohz.next_balance = jiffies;
-	nohz.next_blocked = jiffies;
-	zalloc_cpumask_var(&nohz.idle_cpus_mask, GFP_NOWAIT);
-#endif
 #endif /* SMP */
 }
