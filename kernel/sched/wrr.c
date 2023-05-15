@@ -363,26 +363,14 @@ static void rebalance_domains(struct rq *rq, enum cpu_idle_type idle)
 }
 
 /*
- * idle_balance is called by schedule() if this_cpu is about to become
- * idle. Attempts to pull tasks from other CPUs.
- */
-static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
-{
-	// LB_TODO
-}
-
-/*
  * run_rebalance_domains is triggered when needed from the scheduler tick.
  */
 static __latent_entropy void run_rebalance_domains(struct softirq_action *h)
 {
 	struct rq *this_rq = this_rq();
-	enum cpu_idle_type idle =
-		this_rq->idle_balance ? CPU_IDLE : CPU_NOT_IDLE;
 
-	/* normal load balance */
 	update_blocked_averages(this_rq->cpu);
-	rebalance_domains(this_rq, idle);
+	rebalance_domains(this_rq);
 }
 
 /*
@@ -400,18 +388,18 @@ void trigger_load_balance_wrr(struct rq *rq)
 			SCHED_SOFTIRQ_WRR);
 }
 
-static inline void update_next_balance_wrr(struct sched_domain *sd,
-				       unsigned long *next_balance_wrr)
-{
-	unsigned long interval, next;
+// static inline void update_next_balance_wrr(struct sched_domain *sd,
+// 				       unsigned long *next_balance_wrr)
+// {
+// 	unsigned long interval, next;
 
-	/* used by idle balance, so cpu_busy = 0 */
-	interval = msecs_to_jiffies(2000); // Load balance every 2000 ms
-	next = sd->last_balance + interval;
+// 	/* used by idle balance, so cpu_busy = 0 */
+// 	interval = msecs_to_jiffies(2000); // Load balance every 2000 ms
+// 	next = sd->last_balance + interval;
 
-	if (time_after(*next_balance_wrr, next))
-		*next_balance_wrr = next;
-}
+// 	if (time_after(*next_balance_wrr, next))
+// 		*next_balance_wrr = next;
+// }
 
 __init void init_sched_wrr_class(void)
 {
