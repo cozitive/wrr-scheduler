@@ -83,6 +83,7 @@ static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 
 		// increment runqueue variables
 		inc_wrr_tasks(wrr_se, wrr_rq);
+		add_nr_running(rq, 1);
 	}
 }
 
@@ -109,6 +110,7 @@ static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 
 		// decrement runqueue variables
 		dec_wrr_tasks(wrr_se, wrr_rq);
+		sub_nr_running(rq, 1);
 	}
 }
 
