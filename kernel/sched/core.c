@@ -3064,7 +3064,7 @@ void scheduler_tick(void)
 
 #ifdef CONFIG_SMP
 	rq->idle_balance = idle_cpu(cpu);
-	trigger_load_balance_wrr(rq); // LB_TODO : Add synchronization
+	trigger_load_balance_wrr(rq); // LB_TODO: make sure that only one CPU actually does the load balancing
 #endif
 }
 
@@ -6040,7 +6040,6 @@ void __init sched_init(void)
 		rq->balance_callback = NULL;
 		rq->active_balance = 0;
 		rq->next_balance = jiffies;
-		rq->next_balance_wrr = jiffies;
 		rq->push_cpu = 0;
 		rq->cpu = i;
 		rq->online = 0;
