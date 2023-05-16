@@ -176,10 +176,10 @@ static void set_curr_task_wrr(struct rq *rq) {}
 
 static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued) {
 	struct sched_wrr_entity *wrr_se = &p->wrr;
-	
+
 	if (--wrr_se->time_slice)
 		return;
-	
+
 	wrr_se->time_slice = wrr_se->weight * 10;
 
 	if (wrr_se->run_list.prev != wrr_se->run_list.next) {
@@ -237,17 +237,47 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 /// find_busiest_queue 참고
 static int load_balance_wrr(struct rq *rq)
 {
-	int curr_cpu, max_cpu = -1, min_cpu = -1;
+	int cpu, max_cpu = -1, min_cpu = -1;
 	struct rq *rq;
+	int weight_sum, max_weight_sum = -1, min_weight_sum = -1;
 	unsigned long next_balance = jiffies + msecs_to_jiffies(2000);
 
+	// LB_TODO : Add lock for all CPUs. RCU?
+
 	// Iterate over all online cpus
-	for_each_online_cpu(curr_cpu)
+	for_each_online_cpu(cpu)
 	{
-		if (max_cpu == -1) max_cpu = curr_cpu;
-		if (min_cpu == -1) min_cpu = curr_cpu;
-		rq = cpu_rq(curr_cpu);
+		weight_sum = 0;
+		rq = cpu_rq(cpu);
+
+		rq_lock(rq);
+		// Iterate over all tasks in the runqueue
+		for_each_sched_wrr_entity(wrr_se, &rq->wrr) // LB_TODO : implement for_each_sched_wrr_entity
+		{
+			weight_sum += wrr_se->weight;
+		}
+		rq_unlock(rq);
+
+		if (max_cpu == -1) // First online CPU
+		{
+			max_cpu = cpu;
+			min_cpu = cpu;
+			max_weight_sum = weight_sum;
+			min_weight_sum = weight_sum;
+		}
+		else if (weight_sum > max_weight_sum)
+		{
+			max_cpu = cpu;
+			max_weight_sum = weight_sum;
+		}
+		else if (weight_sum < min_weight_sum)
+		{
+			min_cpu = cpu;
+			min_weight_sum = weight_sum;
+		}
 	}
+
+	// LB_TODO: Continue implementing load balancing...
 }
 
 /*
@@ -264,19 +294,6 @@ void trigger_load_balance_wrr(struct rq *rq)
 		raise_softirq(
 			SCHED_SOFTIRQ_WRR);
 }
-
-// static inline void update_next_balance_wrr(struct sched_domain *sd,
-// 				       unsigned long *next_balance_wrr)
-// {
-// 	unsigned long interval, next;
-
-// 	/* used by idle balance, so cpu_busy = 0 */
-// 	interval = msecs_to_jiffies(2000); // Load balance every 2000 ms
-// 	next = sd->last_balance + interval;
-
-// 	if (time_after(*next_balance_wrr, next))
-// 		*next_balance_wrr = next;
-// }
 
 __init void init_sched_wrr_class(void)
 {
