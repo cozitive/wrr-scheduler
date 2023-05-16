@@ -162,6 +162,11 @@ static inline int fair_policy(int policy)
 	return policy == SCHED_NORMAL || policy == SCHED_BATCH;
 }
 
+static inline int wrr_policy(int policy)
+{
+	return policy == SCHED_WRR;
+}
+
 static inline int rt_policy(int policy)
 {
 	return policy == SCHED_FIFO || policy == SCHED_RR;
@@ -173,7 +178,7 @@ static inline int dl_policy(int policy)
 }
 static inline bool valid_policy(int policy)
 {
-	return idle_policy(policy) || fair_policy(policy) ||
+	return idle_policy(policy) || fair_policy(policy) || wrr_policy(policy) ||
 		rt_policy(policy) || dl_policy(policy);
 }
 
