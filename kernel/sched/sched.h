@@ -841,7 +841,6 @@ struct rq {
 	struct task_struct	*idle;
 	struct task_struct	*stop;
 	unsigned long		next_balance;
-	unsigned long 		next_balance_wrr;
 	struct mm_struct	*prev_mm;
 
 	unsigned int		clock_update_flags;

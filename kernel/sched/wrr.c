@@ -230,12 +230,11 @@ const struct sched_class wrr_sched_class = {
 
 static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 {
-	struct rq *this_rq = this_rq();
-	load_balance_wrr(this_rq);
+	load_balance_wrr();
 }
 
 /// find_busiest_queue 참고
-static int load_balance_wrr(struct rq *rq)
+static int load_balance_wrr()
 {
 	int cpu, max_cpu = -1, min_cpu = -1;
 	struct rq *rq;
@@ -283,16 +282,11 @@ static int load_balance_wrr(struct rq *rq)
 /*
  * Trigger the SCHED_SOFTIRQ_WRR if it is time to do periodic load balancing.
  */
-void trigger_load_balance_wrr(struct rq *rq)
+void trigger_load_balance_wrr()
 {
-	/* Don't need to rebalance while attached to NULL domain */
-	if (unlikely(on_null_domain(rq)))
-		return;
-
 	/* trigger_load_balance_wrr() checks a timer and if balancing is due, it fires the soft irq with the corresponding flag SCHED_SOFTIRQ_WRR. */
-	if (time_after_eq(jiffies, rq->next_balance_wrr))
-		raise_softirq(
-			SCHED_SOFTIRQ_WRR);
+	if (time_after_eq(jiffies, rq->next_balance_wrr)) // LB_TODO: change next_balance tracker to global variable
+		raise_softirq(SCHED_SOFTIRQ_WRR);
 }
 
 __init void init_sched_wrr_class(void)
