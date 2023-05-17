@@ -4,8 +4,6 @@
 SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 {
 	// WRR_TODO: add permission error handling
-
-	printk(KERN_INFO "sched_setweight");
 	struct task_struct *p;
 	p = find_task_by_vpid(pid);
 	if (pid < 0) {

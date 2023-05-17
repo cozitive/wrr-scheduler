@@ -2337,9 +2337,10 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 		return -EAGAIN;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
-	else
-		/* Every normal task should be assigned to the WRR scheduler. */
+	else if (p->policy == SCHED_WRR)
 		p->sched_class = &wrr_sched_class;
+	else
+		p->sched_class = &fair_sched_class;
 
 	init_entity_runnable_average(&p->se);
 
@@ -3839,12 +3840,14 @@ void rt_mutex_setprio(struct task_struct *p, struct task_struct *pi_task)
 		if (oldprio < prio)
 			queue_flag |= ENQUEUE_HEAD;
 		p->sched_class = &rt_sched_class;
+	} else if (p->policy == SCHED_WRR) {
+		p->sched_class = &wrr_sched_class;
 	} else {
 		if (dl_prio(oldprio))
 			p->dl.dl_boosted = 0;
 		if (rt_prio(oldprio))
 			p->rt.timeout = 0;
-		p->sched_class = &wrr_sched_class;
+		p->sched_class = &fair_sched_class;
 	}
 
 	p->prio = prio;
@@ -4099,8 +4102,10 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
 		p->sched_class = &dl_sched_class;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
-	else
+	else if (p->policy == SCHED_WRR)
 		p->sched_class = &wrr_sched_class;
+	else
+		p->sched_class = &fair_sched_class;
 }
 
 /*
@@ -4365,14 +4370,14 @@ change:
 static int _sched_setscheduler(struct task_struct *p, int policy,
 			       const struct sched_param *param, bool check)
 {
-	/* Changing a task's scheduler to the CFS scheduler should be redirected: the task is instead sent to the WRR scheduler. */
-	if (fair_policy(policy)) policy = SCHED_WRR;
-
 	struct sched_attr attr = {
 		.sched_policy   = policy,
 		.sched_priority = param->sched_priority,
 		.sched_nice	= PRIO_TO_NICE(p->static_prio),
 	};
+
+	/* Changing a task's scheduler to the CFS scheduler should be redirected: the task is instead sent to the WRR scheduler. */
+	if (fair_policy(policy)) policy = SCHED_WRR;
 
 	/* Fixup the legacy SCHED_RESET_ON_FORK hack. */
 	if ((policy != SETPARAM_POLICY) && (policy & SCHED_RESET_ON_FORK)) {
