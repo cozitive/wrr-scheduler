@@ -684,10 +684,9 @@ struct dl_rq {
 
 /* WRR related fields in a runqueue */
 struct wrr_rq {
-	// WRR_TODO
 	struct list_head queue;     // head of task queue
-	int bit;                    // whether task is in a queue
 	unsigned int nr_running;    // # of running tasks
+	unsigned int total_weight;  // total weight of tasks on the queue
 };
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
