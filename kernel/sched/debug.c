@@ -497,6 +497,13 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 	rcu_read_unlock();
 }
 
+void print_wrr_rq(struct seq_file *m, int cpu, struct wrr_rq *wrr_rq) {
+	SEQ_printf(m, "\n");
+	SEQ_printf(m, "wrr_rq[%d]:\n", cpu);
+	SEQ_printf(m, "  .%-30s: %d\n", "nr_running", wrr_rq->nr_running);
+	SEQ_printf(m, "  .%-30s: %d\n", "total_weight", wrr_rq->total_weight);
+}
+
 void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
 {
 	s64 MIN_vruntime = -1, min_vruntime, max_vruntime = -1,
@@ -691,6 +698,7 @@ do {									\
 #undef P
 
 	spin_lock_irqsave(&sched_debug_lock, flags);
+	print_wrr_stats(m, cpu);
 	print_cfs_stats(m, cpu);
 	print_rt_stats(m, cpu);
 	print_dl_stats(m, cpu);
