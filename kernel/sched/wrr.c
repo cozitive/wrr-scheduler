@@ -78,7 +78,7 @@ static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 	struct sched_wrr_entity *wrr_se = &p->wrr;
 	struct wrr_rq *wrr_rq = wrr_rq_of_se(wrr_se);
 
-	if (on_wrr_rq(wrr_se))
+	if (!on_wrr_rq(wrr_se))
 		return;
 
 	list_del_init(&wrr_se->run_list);
@@ -119,9 +119,7 @@ static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct 
 	return wrr_task_of(wrr_se);
 }
 
-static void put_prev_task_wrr(struct rq *rq, struct task_struct *prev) {
-	enqueue_task_wrr(rq, prev, 0);
-}
+static void put_prev_task_wrr(struct rq *rq, struct task_struct *prev) {}
 
 #ifdef CONFIG_SMP
 static int select_task_rq_wrr(struct task_struct *p, int cpu, int sd_flag, int flags) {
