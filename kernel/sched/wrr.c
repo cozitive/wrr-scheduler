@@ -125,7 +125,7 @@ static void requeue_task_wrr(struct rq *rq, struct task_struct *p)
 	if (!on_wrr_rq(wrr_se))
 		return;
 
-	list_move(&wrr_se->run_list , &wrr_rq->queue);
+	list_move(&wrr_se->run_list, &wrr_rq->queue);
 }
 
 /// @brief Requeue the current WRR task when yielding.
@@ -152,9 +152,12 @@ static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct 
 	return wrr_task_of(wrr_se);
 }
 
+/// @brief Requeue the previous WRR task on the runqueue. 
+/// @param rq a runqueue.
+/// @param prev previously executed task.
 static void put_prev_task_wrr(struct rq *rq, struct task_struct *prev)
 {
-
+	requeue_task_wrr(rq, prev);
 }
 
 #ifdef CONFIG_SMP
