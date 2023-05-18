@@ -3,6 +3,8 @@
  */
 #include "sched.h"
 
+#define WRR_TIMESLICE 10
+
 /// @brief Initialize a WRR runqueue.
 /// @param wrr_rq a WRR runqueue to initiate.
 void init_wrr_rq(struct wrr_rq *wrr_rq) {
@@ -180,8 +182,6 @@ static void rq_offline_wrr(struct rq *rq) {
 }
 #endif
 
-static void set_curr_task_wrr(struct rq *rq) {}
-
 /// @brief Update statistics of the current WRR task.
 /// @param rq a runqueue.
 static void update_curr_wrr(struct rq *rq) {
@@ -223,7 +223,7 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued) {
 		return;
 	}
 
-	wrr_se->time_slice = wrr_se->weight * 10;
+	wrr_se->time_slice = wrr_se->weight * WRR_TIMESLICE;
 
 	if (wrr_se->run_list.prev != wrr_se->run_list.next) {
 		requeue_task_wrr(rq, p);
@@ -231,15 +231,17 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued) {
 	}
 }
 
-static void task_fork_wrr(struct task_struct *p) {}
-
 /// @brief Return the WRR timeslice based on task's weight.
 /// @param rq a runqueue (not used).
 /// @param task a task.
 /// @return the WRR timeslice of `task`.
 static unsigned int get_rr_interval_wrr(struct rq *rq, struct task_struct *task) {
-	return task->wrr.weight * 10;
+	return task->wrr.weight * WRR_TIMESLICE;
 }
+
+static void check_preempt_curr_wrr(struct rq *rq, struct task_struct *p, int flags) {}
+
+static void set_curr_task_wrr(struct rq *rq) {}
 
 static void prio_changed_wrr(struct rq *rq, struct task_struct *p, int oldprio) {}
 
@@ -265,7 +267,6 @@ const struct sched_class wrr_sched_class = {
 	.enqueue_task = enqueue_task_wrr,
 	.dequeue_task = dequeue_task_wrr,
 	.yield_task = yield_task_wrr,
-	.check_preempt_curr = check_preempt_curr_wrr,
 	.pick_next_task = pick_next_task_wrr,
 	.put_prev_task = put_prev_task_wrr,
 
@@ -278,12 +279,13 @@ const struct sched_class wrr_sched_class = {
 	.rq_offline = rq_offline_wrr,
 #endif
 
-	.set_curr_task = set_curr_task_wrr,
+	.update_curr = update_curr_wrr,
 	.task_tick = task_tick_wrr,
-	.task_fork = task_fork_wrr,
 	.get_rr_interval = get_rr_interval_wrr,
+
+	.check_preempt_curr = check_preempt_curr_wrr,
+	.set_curr_task = set_curr_task_wrr,
 	.prio_changed = prio_changed_wrr,
 	.switched_from = switched_from_wrr,
-	.switched_to = switched_to_wrr,
-	.update_curr = update_curr_wrr,
+	.switched_to = switched_to_wrr,	
 };
