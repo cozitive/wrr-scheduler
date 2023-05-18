@@ -19,9 +19,13 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 		printk(KERN_INFO "sched_setweight: process not found");
 		return -ESRCH;
 	}
+	if (p->policy != SCHED_WRR) {
+		printk(KERN_INFO
+				"sched_setweight: task policy is not WRR");
+		return -EINVAL;
+	}
 
 	// WRR_TODO: -EINVAL if the task with the given PID is not under the SCHED_WRR policy.
-
 	p->wrr.weight = weight;
 
 	return 0;
