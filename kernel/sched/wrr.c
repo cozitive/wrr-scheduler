@@ -1,10 +1,10 @@
 /*
- * Weighted Round-Robin Scheduling Class (mapped to the SCHED_WRR policy)
+ * Weighted Round-Robin (WRR) Scheduling Class (mapped to the SCHED_WRR policy)
  */
 #include "sched.h"
 
 /// @brief Initialize a WRR runqueue.
-/// @param wrr_rq WRR runqueue to initiate.
+/// @param wrr_rq a WRR runqueue to initiate.
 void init_wrr_rq(struct wrr_rq *wrr_rq) {
 	INIT_LIST_HEAD(&wrr_rq->queue);
 	wrr_rq->nr_running = 0;
@@ -12,32 +12,45 @@ void init_wrr_rq(struct wrr_rq *wrr_rq) {
 }
 
 /// @brief Get the task_struct of a WRR scheduler entity.
+/// @param wrr_se a WRR entity.
+/// @return a task containing `wrr_se`.
 static inline struct task_struct *wrr_task_of(struct sched_wrr_entity *wrr_se) {
 	return container_of(wrr_se, struct task_struct, wrr);
 }
 
 /// @brief Get the runqueue of a WRR runqueue.
+/// @param wrr_rq a WRR runqueue.
+/// @return a runqueue containing `wrr_rq`.
 static inline struct rq *rq_of_wrr_rq(struct wrr_rq *wrr_rq) {
 	return container_of(wrr_rq, struct rq, wrr);
 }
 
 /// @brief Get the runqueue of a WRR scheduler entity.
+/// @param wrr_se a WRR entity.
+/// @return a runqueue on which `wrr_se` is enqueued.
 static inline struct rq *rq_of_wrr_se(struct sched_wrr_entity *wrr_se) {
 	struct task_struct *p = wrr_task_of(wrr_se);
 	return task_rq(p);
 }
 
 /// @brief Get the WRR runqueue of a WRR scheduler entity.
+/// @param wrr_se a WRR entity.
+/// @return a WRR runqueue on which `wrr_se` is enqueued.
 static inline struct wrr_rq *wrr_rq_of_se(struct sched_wrr_entity *wrr_se) {
 	struct rq *rq = rq_of_wrr_se(wrr_se);
 	return &rq->wrr;
 }
 
+/// @brief Check if a WRR scheduler entity is on a runqueue.
+/// @param wrr_se a WRR entity.
+/// @return 1 if `wrr_se` is on a WRR runqueue, else 0.
 static inline int on_wrr_rq(struct sched_wrr_entity *wrr_se) {
 	return wrr_se->on_rq;
 }
 
 /// @brief Increment runqueue variables after the enqueue.
+/// @param wrr_se a WRR entity.
+/// @param wrr_rq a WRR runqueue.
 static inline void inc_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq *wrr_rq) {
 	wrr_se->on_rq = 1;
 	wrr_rq->nr_running += 1;
@@ -45,6 +58,8 @@ static inline void inc_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq 
 }
 
 /// @brief Decrement runqueue variables after the dequeue.
+/// @param wrr_se a WRR entity.
+/// @param wrr_rq a WRR runqueue.
 static inline void dec_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq *wrr_rq) {
 	WARN_ON(!wrr_rq->nr_running);
 	WARN_ON(!wrr_rq->total_weight);
@@ -56,7 +71,7 @@ static inline void dec_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq 
 /// @brief Enqueue a task to WRR runqueue.
 /// @param rq a runqueue.
 /// @param p a task to be enqueued to WRR runqueue of `rq`.
-/// @param flags optional flags.
+/// @param flags optional flags (not used).
 static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 	struct sched_wrr_entity *wrr_se = &p->wrr;
 	struct wrr_rq *wrr_rq = wrr_rq_of_se(wrr_se);
@@ -73,7 +88,7 @@ static void enqueue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 /// @brief Dequeue a task from WRR runqueue.
 /// @param rq a runqueue.
 /// @param p a task to be dequeued from WRR runqueue of `rq`.
-/// @param flags optional flags.
+/// @param flags optional flags (not used).
 static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 	struct sched_wrr_entity *wrr_se = &p->wrr;
 	struct wrr_rq *wrr_rq = wrr_rq_of_se(wrr_se);
@@ -87,25 +102,29 @@ static void dequeue_task_wrr(struct rq *rq, struct task_struct *p, int flags) {
 	sub_nr_running(rq, 1);
 }
 
+/// @brief Dequeue a task from WRR runqueue, and enqueue it again.
+/// @param rq a runqueue.
+/// @param p a task to be requeued from WRR runqueue of `rq`.
 static void requeue_task_wrr(struct rq *rq, struct task_struct *p) {
 	struct sched_wrr_entity *wrr_se = &p->wrr;
 	struct wrr_rq *wrr_rq = &rq->wrr;
 
-	if (on_wrr_rq(wrr_se)) {
-		list_move(&wrr_se->run_list , &wrr_rq->queue);
-	}
+	if (!on_wrr_rq(wrr_se))
+		return;
+
+	list_move(&wrr_se->run_list , &wrr_rq->queue);
 }
 
+/// @brief Requeue the current WRR task when yielding.
+/// @param rq a runqueue.
 static void yield_task_wrr(struct rq *rq) {
 	requeue_task_wrr(rq, rq->curr);
 }
 
-static void check_preempt_curr_wrr(struct rq *rq, struct task_struct *p, int flags) {}
-
-/// @brief Pick next task from WRR runqueue.
+/// @brief Pick the next task to execute from WRR runqueue.
 /// @param rq a runqueue.
 /// @param prev previously executed task.
-/// @param rf runqueue flags.
+/// @param rf runqueue flags (not used).
 static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct *prev, struct rq_flags *rf) {
 	struct wrr_rq *wrr_rq = &rq->wrr;
 	struct sched_wrr_entity *wrr_se;
@@ -122,7 +141,12 @@ static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct 
 static void put_prev_task_wrr(struct rq *rq, struct task_struct *prev) {}
 
 #ifdef CONFIG_SMP
-static int select_task_rq_wrr(struct task_struct *p, int cpu, int sd_flag, int flags) {
+/// @brief Select a CPU to execute a task (with minimum total weight).
+/// @param p a task to be enqueued in a runqueue.
+/// @param cpu previously executed CPU index.
+/// @param sd_flag sched-domain flag (not used).
+/// @param wake_flags wake flags (not used).
+static int select_task_rq_wrr(struct task_struct *p, int cpu, int sd_flag, int wake_flags) {
 	unsigned int min_cpu_index = -1;
 	unsigned int min_total_weight = UINT_MAX;
 
@@ -158,6 +182,8 @@ static void rq_offline_wrr(struct rq *rq) {
 
 static void set_curr_task_wrr(struct rq *rq) {}
 
+/// @brief Update statistics of the current WRR task.
+/// @param rq a runqueue.
 static void update_curr_wrr(struct rq *rq) {
 	struct task_struct *curr = rq->curr;
 	u64 delta_exec;
@@ -181,6 +207,10 @@ static void update_curr_wrr(struct rq *rq) {
 	cgroup_account_cputime(curr, delta_exec);
 }
 
+/// @brief Update timeslice of the current WRR task at every tick.
+/// @param rq a runqueue.
+/// @param p the current task.
+/// @param queued queued tick flag (not used).
 static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued) {
 	struct sched_wrr_entity *wrr_se = &p->wrr;
 
@@ -201,11 +231,12 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued) {
 	}
 }
 
-static void task_fork_wrr(struct task_struct *p) {
-	p->wrr.on_rq = 0;
-}
+static void task_fork_wrr(struct task_struct *p) {}
 
-/// @brief Return WRR timeslice based on task's weight.
+/// @brief Return the WRR timeslice based on task's weight.
+/// @param rq a runqueue (not used).
+/// @param task a task.
+/// @return the WRR timeslice of `task`.
 static unsigned int get_rr_interval_wrr(struct rq *rq, struct task_struct *task) {
 	return task->wrr.weight * 10;
 }
@@ -219,6 +250,9 @@ static void switched_to_wrr(struct rq *rq, struct task_struct *p) {}
 #ifdef CONFIG_SCHED_DEBUG
 extern void print_wrr_rq(struct seq_file *m, int cpu, struct wrr_rq *wrr_rq);
 
+/// @brief Print statistics of WRR scheduler.
+/// @param m a sequence file to print the result.
+/// @param cpu a CPU index.
 void print_wrr_stats(struct seq_file *m, int cpu) {
 	rcu_read_lock();
 	print_wrr_rq(m, cpu, &cpu_rq(cpu)->wrr);
