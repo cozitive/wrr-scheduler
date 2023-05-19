@@ -313,7 +313,7 @@ const struct sched_class wrr_sched_class = {
 	.set_curr_task = set_curr_task_wrr,
 	.prio_changed = prio_changed_wrr,
 	.switched_from = switched_from_wrr,
-	.switched_to = switched_to_wrr,
+	.switched_to = switched_to_wrr, 
 };
 
 #define for_each_sched_wrr_entity(wrr_se, wrr_rq) \
