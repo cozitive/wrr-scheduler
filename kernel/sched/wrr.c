@@ -150,7 +150,7 @@ static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct 
 	return wrr_task_of(wrr_se);
 }
 
-/// @brief Requeue the previous WRR task on the runqueue.
+/// @brief Requeue the previous WRR task on the runqueue. 
 /// @param rq a runqueue.
 /// @param prev previously executed task.
 static void put_prev_task_wrr(struct rq *rq, struct task_struct *prev)
@@ -238,15 +238,12 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 	struct task_struct *curr = rq->curr;
 	struct sched_wrr_entity *wrr_se = &p->wrr;
 
-	if (--wrr_se->time_slice)
-
 	update_curr_wrr(rq);
 
 	if (curr->sched_class != &wrr_sched_class)
 		return;
 
-
-	if (--wrr_se->time_slice) {
+	if (--wrr_se->time_slice > 0) {
 		return;
 	}
 
