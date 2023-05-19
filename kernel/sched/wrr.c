@@ -320,20 +320,25 @@ const struct sched_class wrr_sched_class = {
 	.switched_to = switched_to_wrr,
 };
 
+#define for_each_sched_wrr_entity(wrr_se, wrr_rq) \
+	list_for_each_entry(wrr_se, &(wrr_rq)->queue, run_list)
+
+#ifdef CONFIG_SMP
+
 static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 {
 	load_balance_wrr();
 }
 
-/// find_busiest_queue 참고
 static void load_balance_wrr()
 {
 	int cpu, max_cpu = -1, min_cpu = -1;
 	struct rq *rq;
 	int weight_sum, max_weight_sum = -1, min_weight_sum = -1;
 	unsigned long next_balance = jiffies + msecs_to_jiffies(2000);
+	struct task_struct *task;
 
-	rcu_read_lock(); // LB_TODO: synchronization에 대해서는 좀 더 생각해 봐야 할듯... (일단은 rcu를 걸어두면 모든 CPU의 런큐 상태가 변하지 않는다는 가정 하에 짰음).. 근데 rq_lock도 추가해야할듯 왜냐면 fair에서 task migration시 rq_lock 하네
+	rcu_read_lock();
 
 	// Iterate over all online cpus
 	for_each_online_cpu(cpu)
@@ -342,11 +347,10 @@ static void load_balance_wrr()
 		rq = cpu_rq(cpu);
 
 		// Iterate over all tasks in the runqueue
-		for_each_sched_wrr_entity(wrr_se, &rq->wrr) // LB_TODO : implement for_each_sched_wrr_entity
+		for_each_sched_wrr_entity(wrr_se, &rq->wrr)
 		{
 			weight_sum += wrr_se->weight;
 		}
-		rq_unlock(rq);
 
 		if (max_cpu == -1) // First online CPU
 		{
@@ -372,6 +376,7 @@ static void load_balance_wrr()
 		return;
 	}
 
+	local_irq_disable();
 	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
 	int max_weight = -1;
@@ -409,11 +414,13 @@ static void load_balance_wrr()
 		return;
 	}
 
-	// LB_TODO: migrate
-
-
-
 	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+
+	/* Migrate the task to min_cpu */
+	struct task_struct *p = wrr_task_of(wrr_se_max);
+	__migrate_task(p, max_cpu, min_cpu);
+
+	local_irq_enable();
 
 	rcu_read_unlock();
 }
@@ -427,6 +434,8 @@ void trigger_load_balance_wrr()
 	if (time_after_eq(jiffies, rq->next_balance_wrr)) // LB_TODO: change next_balance tracker to global variable
 		raise_softirq(SCHED_SOFTIRQ_WRR);
 }
+
+#endif /* SMP */
 
 __init void init_sched_wrr_class(void)
 {
