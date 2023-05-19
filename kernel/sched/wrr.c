@@ -152,7 +152,7 @@ static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct 
 	return wrr_task_of(wrr_se);
 }
 
-/// @brief Requeue the previous WRR task on the runqueue. 
+/// @brief Requeue the previous WRR task on the runqueue.
 /// @param rq a runqueue.
 /// @param prev previously executed task.
 static void put_prev_task_wrr(struct rq *rq, struct task_struct *prev)
@@ -317,7 +317,7 @@ const struct sched_class wrr_sched_class = {
 	.set_curr_task = set_curr_task_wrr,
 	.prio_changed = prio_changed_wrr,
 	.switched_from = switched_from_wrr,
-	.switched_to = switched_to_wrr,	
+	.switched_to = switched_to_wrr,
 };
 
 static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
@@ -326,14 +326,14 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 }
 
 /// find_busiest_queue 참고
-static int load_balance_wrr()
+static void load_balance_wrr()
 {
 	int cpu, max_cpu = -1, min_cpu = -1;
 	struct rq *rq;
 	int weight_sum, max_weight_sum = -1, min_weight_sum = -1;
 	unsigned long next_balance = jiffies + msecs_to_jiffies(2000);
 
-	// LB_TODO : Add lock for all CPUs. RCU?
+	rcu_read_lock(); // LB_TODO: synchronization에 대해서는 좀 더 생각해 봐야 할듯... (일단은 rcu를 걸어두면 모든 CPU의 런큐 상태가 변하지 않는다는 가정 하에 짰음).. 근데 rq_lock도 추가해야할듯 왜냐면 fair에서 task migration시 rq_lock 하네
 
 	// Iterate over all online cpus
 	for_each_online_cpu(cpu)
@@ -341,7 +341,6 @@ static int load_balance_wrr()
 		weight_sum = 0;
 		rq = cpu_rq(cpu);
 
-		rq_lock(rq);
 		// Iterate over all tasks in the runqueue
 		for_each_sched_wrr_entity(wrr_se, &rq->wrr) // LB_TODO : implement for_each_sched_wrr_entity
 		{
@@ -368,7 +367,55 @@ static int load_balance_wrr()
 		}
 	}
 
-	// LB_TODO: Continue implementing load balancing...
+	if (max_cpu == min_cpu) {
+		rcu_read_unlock();
+		return;
+	}
+
+	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+
+	int max_weight = -1;
+	struct sched_wrr_entity *wrr_se_max = NULL;
+	// Choose the task with the highest weight on max_cpu
+	for_each_sched_wrr_entity(wrr_se, &cpu_rq(max_cpu)->wrr)
+	{
+		if (wrr_se->weight > max_weight)
+		{
+			struct *task_struct p = wrr_task_of(wrr_se);
+
+			/* If the task is currently running, continue */
+			if (p == cpu_rq(max_cpu)->curr)
+				continue;
+
+			/* Migration should not make the total weight of min_cpu equal to or greater than that of max_cpu */
+			if (min_weight_sum + wrr_se->weight >=
+			    max_weight_sum - wrr_se->weight)
+				continue;
+
+			/* The task’s CPU affinity should allow migrating the task to min_cpu */
+			if (!cpumask_test_cpu(min_cpu, &p->cpus_allowed))
+				continue;
+
+			/* All tests passed */
+			max_weight = wrr_se->weight;
+			wrr_se_max = wrr_se;
+		}
+	}
+
+	/* No transferable task exists, return */
+	if (wrr_se_max == NULL) {
+		double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+		rcu_read_unlock();
+		return;
+	}
+
+	// LB_TODO: migrate
+
+
+
+	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+
+	rcu_read_unlock();
 }
 
 /*
