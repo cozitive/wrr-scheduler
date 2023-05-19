@@ -331,7 +331,6 @@ static void load_balance_wrr()
 	int cpu, max_cpu = -1, min_cpu = -1;
 	struct rq *rq;
 	int weight_sum, max_weight_sum = -1, min_weight_sum = -1;
-	unsigned long next_balance = jiffies + msecs_to_jiffies(2000);
 	struct task_struct *task;
 
 	rcu_read_lock();
@@ -422,14 +421,22 @@ static void load_balance_wrr()
 	rcu_read_unlock();
 }
 
+volatile unsigned long next_balance_wrr = 0;
+spinlock_t wrr_balancer_lock = SPIN_LOCK_UNLOCKED;
+
 /*
  * Trigger the SCHED_SOFTIRQ_WRR if it is time to do periodic load balancing.
  */
 void trigger_load_balance_wrr()
 {
 	/* trigger_load_balance_wrr() checks a timer and if balancing is due, it fires the soft irq with the corresponding flag SCHED_SOFTIRQ_WRR. */
-	if (time_after_eq(jiffies, rq->next_balance_wrr)) // LB_TODO: change next_balance tracker to global variable
+	spin_lock(&wrr_balancer_lock);
+	if (time_after_eq(jiffies, next_balance_wrr))
+	{
+		next_balance_wrr = jiffies + msecs_to_jiffies(2000);
+		spin_unlock(&wrr_balancer_lock);
 		raise_softirq(SCHED_SOFTIRQ_WRR);
+	} else spin_unlock(&wrr_balancer_lock);
 }
 
 #endif /* SMP */
