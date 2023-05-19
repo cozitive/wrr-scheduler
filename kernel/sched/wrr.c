@@ -409,6 +409,7 @@ static void load_balance_wrr()
 	/* No transferable task exists, return */
 	if (wrr_se_max == NULL) {
 		double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+		local_irq_enable();
 		rcu_read_unlock();
 		return;
 	}
