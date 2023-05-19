@@ -9,7 +9,7 @@ all: $(TARGETS) $(OBJECTS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 %: %.c $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
 	rm -f $(TARGETS) $(OBJECTS)

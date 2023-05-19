@@ -2169,8 +2169,7 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->rt.on_list		= 0;
 
 	INIT_LIST_HEAD(&p->wrr.run_list);
-	p->wrr.weight = 10;
-	p->wrr.time_slice = 100;
+	p->wrr.time_slice = WRR_DEFAULT_WEIGHT * WRR_TIMESLICE;
 	p->wrr.on_rq = 0;
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
@@ -2317,7 +2316,8 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 	 */
 	if (unlikely(p->sched_reset_on_fork)) {
 		if (task_has_dl_policy(p) || task_has_rt_policy(p)) {
-			p->policy = SCHED_NORMAL;
+			// p->policy = SCHED_NORMAL;
+			p->policy = SCHED_WRR;
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
@@ -5171,6 +5171,7 @@ SYSCALL_DEFINE1(sched_get_priority_max, int, policy)
 	case SCHED_DEADLINE:
 	case SCHED_NORMAL:
 	case SCHED_BATCH:
+	case SCHED_WRR:
 	case SCHED_IDLE:
 		ret = 0;
 		break;
@@ -5198,6 +5199,7 @@ SYSCALL_DEFINE1(sched_get_priority_min, int, policy)
 	case SCHED_DEADLINE:
 	case SCHED_NORMAL:
 	case SCHED_BATCH:
+	case SCHED_WRR:
 	case SCHED_IDLE:
 		ret = 0;
 	}
@@ -5387,6 +5389,9 @@ void init_idle(struct task_struct *idle, int cpu)
 	idle->state = TASK_RUNNING;
 	idle->se.exec_start = sched_clock();
 	idle->flags |= PF_IDLE;
+
+	idle->wrr.weight = WRR_DEFAULT_WEIGHT;
+	idle->wrr.time_slice = WRR_DEFAULT_WEIGHT * WRR_TIMESLICE;
 
 	kasan_unpoison_task_stack(idle);
 
@@ -6167,7 +6172,8 @@ void normalize_rt_tasks(void)
 {
 	struct task_struct *g, *p;
 	struct sched_attr attr = {
-		.sched_policy = SCHED_NORMAL,
+		// .sched_policy = SCHED_NORMAL,
+		.sched_policy = SCHED_WRR,
 	};
 
 	read_lock(&tasklist_lock);
