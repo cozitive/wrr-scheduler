@@ -3063,7 +3063,7 @@ void scheduler_tick(void)
 
 #ifdef CONFIG_SMP
 	rq->idle_balance = idle_cpu(cpu);
-	trigger_load_balance_wrr(); // LB_TODO: make sure that only one CPU actually does the load balancing
+	trigger_load_balance_wrr();
 #endif
 }
 
