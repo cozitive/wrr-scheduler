@@ -1,7 +1,7 @@
 /*
  * Weighted Round-Robin (WRR) Scheduling Class (mapped to the SCHED_WRR policy)
  */
-#include "sched.h".switched_to = switched_to_wrr,	
+#include "sched.h"
 
 /// @brief Initialize a WRR runqueue.
 /// @param wrr_rq a WRR runqueue to initiate.
