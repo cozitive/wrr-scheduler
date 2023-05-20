@@ -451,7 +451,7 @@ volatile unsigned long next_balance_wrr = 0;
 /* Spinlock for load balancing */
 spinlock_t wrr_balancer_lock; 
 
-/// @brief Trigger the SCHED_SOFTIRQ_WRR(run_load_balance_wrr) if it is time to do periodic load balancing.
+/// @brief Trigger the SCHED_SOFTIRQ(run_load_balance_wrr) if it is time to do periodic load balancing.
 void trigger_load_balance_wrr(void)
 {
 	/* Spinlock is required to make sure only one CPU actualy does load balancing. */
@@ -462,8 +462,8 @@ void trigger_load_balance_wrr(void)
 		next_balance_wrr = jiffies + msecs_to_jiffies(2000);
 		spin_unlock(&wrr_balancer_lock);
 
-		/* Trigger the SCHED_SOFTIRQ_WRR(run_load_balance_wrr) */
-		raise_softirq(SCHED_SOFTIRQ_WRR);
+		/* Trigger the SCHED_SOFTIRQ(run_load_balance_wrr) */
+		raise_softirq(SCHED_SOFTIRQ);
 	} else
 		/* Time not due for load balancing, therefore unlock and return */
 		spin_unlock(&wrr_balancer_lock);
@@ -478,6 +478,6 @@ __init void init_sched_wrr_class(void)
 	spin_lock_init(&wrr_balancer_lock);
 
 	/* Initialize timer */
-	open_softirq(SCHED_SOFTIRQ_WRR, run_load_balance_wrr);
+	open_softirq(SCHED_SOFTIRQ, run_load_balance_wrr);
 #endif /* SMP */
 }
