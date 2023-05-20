@@ -331,16 +331,19 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 static void load_balance_wrr()
 {
 	int temp_cpu, max_cpu = -1, min_cpu = -1;
-	struct rq *temp_rq;
 	int temp_sum, max_sum = -1, min_sum = -1;
+	struct rq *temp_rq;
+
+	/* Weight of the task with the highest weight on max_cpu */
+	int max_weight = -1;
+
+	/* The task with the highest weight on max_cpu */
+	struct sched_wrr_entity *wrr_se_max = NULL;
 	struct sched_wrr_entity *temp_wrr_se;
-	int max_weight =
-		-1; // Weight of the task with the highest weight on max_cpu
-	struct sched_wrr_entity *wrr_se_max =
-		NULL; // The task with the highest weight on max_cpu
+
+	/* The task with the highest weight on max_cpu */
+	struct task_struct *max_task = NULL;
 	struct task_struct *temp_task;
-	struct task_struct *max_task =
-		NULL; // The task with the highest weight on max_cpu
 
 	rcu_read_lock();
 
