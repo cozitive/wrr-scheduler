@@ -34,10 +34,15 @@ void getweight_invalid_pid_test() {
 void getweight_invalid_policy_test() {
     printf("    invalid policy: ");
 
+    if (getuid() != 0) {
+        printf("no test (not root user)\n");
+        return;
+    }
+
     int pid = getpid();
     struct sched_param param = { .sched_priority = 99 };
     if (sched_setscheduler(pid, SCHED_RR, &param) != 0) {
-        printf("FAIL (setscheduler, errno: %d)\n", errno);
+        printf("FAIL (set to RT, errno: %d)\n", errno);
         return;
     }
 
@@ -49,7 +54,7 @@ void getweight_invalid_policy_test() {
 
     param.sched_priority = 0;
     if (sched_setscheduler(pid, SCHED_WRR, &param) != 0) {
-        printf("FAIL (setscheduler, errno: %d)\n", errno);
+        printf("FAIL (set to WRR, errno: %d)\n", errno);
         exit(1);
     }
 
@@ -131,10 +136,15 @@ void setweight_invalid_permission_test() {
 void setweight_invalid_policy_test() {
     printf("    invalid policy: ");
 
+    if (getuid() != 0) {
+        printf("no test (not root user)\n");
+        return;
+    }
+
     int pid = getpid();
     struct sched_param param = { .sched_priority = 99 };
     if (sched_setscheduler(pid, SCHED_RR, &param) != 0) {
-        printf("FAIL (setscheduler, errno: %d)\n", errno);
+        printf("FAIL (set to RT, errno: %d)\n", errno);
         return;
     }
 
@@ -146,7 +156,7 @@ void setweight_invalid_policy_test() {
 
     param.sched_priority = 0;
     if (sched_setscheduler(pid, SCHED_WRR, &param) != 0) {
-        printf("FAIL (setscheduler, errno: %d)\n", errno);
+        printf("FAIL (set to WRR, errno: %d)\n", errno);
         exit(1);
     }
 
@@ -196,6 +206,11 @@ void set_and_get_test() {
 void reset_to_default_weight_test() {
     printf("reset to default weight test: ");
 
+    if (getuid() != 0) {
+        printf("no test (not root user)\n");
+        return;
+    }
+
     int pid = getpid();
     if (sched_setweight(pid, 12) != 0) {
         printf("FAIL: (setweight, errno: %d)\n", errno);
@@ -204,13 +219,13 @@ void reset_to_default_weight_test() {
 
     struct sched_param param = { .sched_priority = 99 };
     if (sched_setscheduler(pid, SCHED_RR, &param) != 0) {
-        printf("FAIL (setscheduler, errno: %d)\n", errno);
+        printf("FAIL (set to RT, errno: %d)\n", errno);
         return;
     }
 
     param.sched_priority = 0;
     if (sched_setscheduler(pid, SCHED_WRR, &param) != 0) {
-        printf("FAIL (setscheduler, errno: %d)\n", errno);
+        printf("FAIL (set to WRR, errno: %d)\n", errno);
         exit(1);
     }
 
@@ -234,7 +249,7 @@ void preserve_previous_weight_test() {
 
     struct sched_param param = { .sched_priority = 0 };
     if (sched_setscheduler(pid, SCHED_WRR, &param) != 0) {
-        printf("FAIL (setscheduler, errno: %d)\n", errno);
+        printf("FAIL (set to WRR, errno: %d)\n", errno);
         return;
     }
 
