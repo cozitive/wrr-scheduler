@@ -1,7 +1,7 @@
 /*
  * Weighted Round-Robin (WRR) Scheduling Class (mapped to the SCHED_WRR policy)
  */
-#include "sched.h"
+#include "sched.h".switched_to = switched_to_wrr,	
 
 /// @brief Initialize a WRR runqueue.
 /// @param wrr_rq a WRR runqueue to initiate.
@@ -313,7 +313,7 @@ const struct sched_class wrr_sched_class = {
 	.set_curr_task = set_curr_task_wrr,
 	.prio_changed = prio_changed_wrr,
 	.switched_from = switched_from_wrr,
-	.switched_to = switched_to_wrr, 
+	.switched_to = switched_to_wrr,	
 };
 
 /// wrr_se: struct sched_wrr_entity *
