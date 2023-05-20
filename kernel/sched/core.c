@@ -2315,11 +2315,12 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 	 * Revert to default priority/policy on fork if requested.
 	 */
 	if (unlikely(p->sched_reset_on_fork)) {
-		if (task_has_dl_policy(p) || task_has_rt_policy(p)) {
-			// p->policy = SCHED_NORMAL;
+		if (task_has_dl_policy(p) || task_has_rt_policy(p) || task_has_wrr_policy(p)) {
 			p->policy = SCHED_WRR;
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
+			p->wrr.weight = WRR_DEFAULT_WEIGHT;
+			p->wrr.time_slice = WRR_DEFAULT_WEIGHT * WRR_TIMESLICE;
 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
 			p->static_prio = NICE_TO_PRIO(0);
 
