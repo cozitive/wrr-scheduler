@@ -16,17 +16,22 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 		printk(KERN_DEBUG "sched_setweight: pid should be positive");
 		return -EINVAL;
 	}
+
 	if (weight < 1 || weight > 20) {
 		printk(KERN_DEBUG
 		       "sched_setweight: weight should be between 1 and 20");
 		return -EINVAL;
 	}
-	// WRR_TODO: -EINVAL if the task with the given PID is not under the SCHED_WRR policy.
 
 	p = find_task_by_vpid(pid);
 	if (p == NULL) {
 		printk(KERN_DEBUG "sched_setweight: process not found");
 		return -ESRCH;
+	}
+
+	if (p->policy != SCHED_WRR) {
+		printk(KERN_DEBUG "sched_getweight: process policy is not SCHED_WRR");
+		return -EINVAL;
 	}
 
 	if (((int)current_cred()->uid.val != 0) && (current->pid != p->pid)) {
@@ -53,12 +58,16 @@ SYSCALL_DEFINE1(sched_getweight, pid_t, pid)
 		printk(KERN_DEBUG "sched_getweight: pid should be positive");
 		return -EINVAL;
 	}
-	// WRR_TODO: -EINVAL if the task with the given PID is not under the SCHED_WRR policy.
 
 	p = find_task_by_vpid(pid);
 	if (p == NULL) {
 		printk(KERN_DEBUG "sched_getweight: process not found");
 		return -ESRCH;
+	}
+
+	if (p->policy != SCHED_WRR) {
+		printk(KERN_DEBUG "sched_getweight: process policy is not SCHED_WRR");
+		return -EINVAL;
 	}
 
 	return p->wrr.weight;
