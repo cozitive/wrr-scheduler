@@ -6,7 +6,7 @@ cd $BASEDIR
 # Usage: ./compile-mount-and-copy.sh file1 file2 ...
 # If no arguments are given, fallback is `test`
 if [ $# -eq 0 ]; then
-    files=("test")
+    files=("test syscall_test")
 else
     files=("$@")
 fi
