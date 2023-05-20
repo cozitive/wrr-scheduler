@@ -6172,7 +6172,6 @@ void normalize_rt_tasks(void)
 {
 	struct task_struct *g, *p;
 	struct sched_attr attr = {
-		// .sched_policy = SCHED_NORMAL,
 		.sched_policy = SCHED_WRR,
 	};
 
