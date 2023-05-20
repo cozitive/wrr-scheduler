@@ -328,6 +328,7 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 	load_balance_wrr();
 }
 
+/// @brief Load balancing for WRR scheduler.
 static void load_balance_wrr()
 {
 	int temp_cpu, max_cpu = -1, min_cpu = -1;
@@ -425,22 +426,27 @@ static void load_balance_wrr()
 	rcu_read_unlock();
 }
 
+/* Next time to do periodic load balancing */
 volatile unsigned long next_balance_wrr = 0;
-spinlock_t wrr_balancer_lock;
 
-/*
- * Trigger the SCHED_SOFTIRQ_WRR if it is time to do periodic load balancing.
- */
+/* Spinlock for load balancing */
+spinlock_t wrr_balancer_lock; 
+
+/// @brief Trigger the SCHED_SOFTIRQ_WRR(run_load_balance_wrr) if it is time to do periodic load balancing.
 void trigger_load_balance_wrr()
 {
-	/* trigger_load_balance_wrr() checks a timer and if balancing is due, it fires the soft irq with the corresponding flag SCHED_SOFTIRQ_WRR. */
-	/* Spinlock is required to make sure only one CPU triggers load balancing at a time. */
+	/* Spinlock is required to make sure only one CPU actualy does load balancing. */
 	spin_lock(&wrr_balancer_lock);
+
 	if (time_after_eq(jiffies, next_balance_wrr)) {
+		/* Set next load balance time to 2000ms after. */
 		next_balance_wrr = jiffies + msecs_to_jiffies(2000);
 		spin_unlock(&wrr_balancer_lock);
+
+		/* Trigger the SCHED_SOFTIRQ_WRR(run_load_balance_wrr) */
 		raise_softirq(SCHED_SOFTIRQ_WRR);
 	} else
+		/* Time not due for load balancing, therefore unlock and return */
 		spin_unlock(&wrr_balancer_lock);
 }
 
