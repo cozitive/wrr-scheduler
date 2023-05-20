@@ -319,19 +319,18 @@ const struct sched_class wrr_sched_class = {
 
 #ifdef CONFIG_SMP
 
+// #pragma GCC push_options
+// #pragma GCC optimize("O0")
 /// @brief Load balancing for WRR scheduler.
 static void load_balance_wrr(void)
 {
 	int temp_cpu, max_cpu = -1, min_cpu = -1;
 	unsigned int temp_sum, max_sum, min_sum;
 	struct rq *temp_rq;
+	struct sched_wrr_entity *temp_wrr_se;
 
 	/* Weight of the task with the highest weight on max_cpu */
 	int max_weight = -1;
-
-	/* The task with the highest weight on max_cpu */
-	struct sched_wrr_entity *wrr_se_max = NULL;
-	struct sched_wrr_entity *temp_wrr_se;
 
 	/* The task with the highest weight on max_cpu */
 	struct task_struct *max_task = NULL;
@@ -347,12 +346,6 @@ static void load_balance_wrr(void)
 		temp_rq = cpu_rq(temp_cpu);
 
 		/* Iterate over all tasks in the runqueue */
-		/* 
-			temp_rq : struct rq *
-			temp_rq->wrr : struct wrr_rq
-			&(temp_rq->wrr) : struct wrr_rq *
-
-		 */
 		list_for_each_entry (temp_wrr_se, &(temp_rq->wrr.queue),
 				     run_list) {
 			temp_sum += temp_wrr_se->weight;
@@ -373,11 +366,13 @@ static void load_balance_wrr(void)
 		}
 	}
 
-	if (max_cpu == -1 || max_cpu == min_cpu) {
-		rcu_read_unlock();
+	rcu_read_unlock();
+
+	if (max_cpu == min_cpu) {
 		return;
 	}
 
+	local_irq_disable();
 	rq_lock(cpu_rq(max_cpu), &rf);
 
 	/* Choose the task with the highest weight on max_cpu */
@@ -402,15 +397,14 @@ static void load_balance_wrr(void)
 
 			/* All tests passed */
 			max_weight = temp_wrr_se->weight;
-			wrr_se_max = temp_wrr_se;
 			max_task = temp_task;
 		}
 	}
 
 	/* No transferable task exists, return */
-	if (wrr_se_max == NULL) {
+	if (max_task == NULL) {
 		rq_unlock(cpu_rq(max_cpu), &rf);
-		rcu_read_unlock();
+		local_irq_enable();
 		return;
 	}
 
@@ -437,8 +431,9 @@ static void load_balance_wrr(void)
 	       (long long)(jiffies), max_cpu, max_sum, min_cpu, min_sum,
 	       max_task->comm, max_weight);
 
-	rcu_read_unlock();
+	local_irq_enable();
 }
+// #pragma GCC pop_options
 
 static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 {
