@@ -2334,7 +2334,7 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 		p->sched_reset_on_fork = 0;
 	}
 
-	else if (dl_prio(p->prio))
+	if (dl_prio(p->prio))
 		return -EAGAIN;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
@@ -4095,7 +4095,7 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
 	if (keep_boost)
 		p->prio = rt_effective_prio(p, p->prio);
 
-	else if (dl_prio(p->prio))
+	if (dl_prio(p->prio))
 		p->sched_class = &dl_sched_class;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
@@ -4332,6 +4332,12 @@ change:
 
 	prev_class = p->sched_class;
 	__setscheduler(rq, p, attr, pi);
+
+	// set to default weight when newly scheduled to WRR scheduler
+	if ((p->sched_class == &wrr_sched_class) && (prev_class != &wrr_sched_class)) {
+		p->wrr.weight = WRR_DEFAULT_WEIGHT;
+		p->wrr.time_slice = WRR_DEFAULT_WEIGHT * WRR_TIMESLICE;
+	}
 
 	if (queued) {
 		/*

@@ -193,8 +193,8 @@ void set_and_get_test() {
     printf("OK\n");
 }
 
-void setscheduler_default_weight_test() {
-    printf("setscheduler default weight test: ");
+void reset_to_default_weight_test() {
+    printf("reset to default weight test: ");
 
     int pid = getpid();
     if (sched_setweight(pid, 12) != 0) {
@@ -223,13 +223,38 @@ void setscheduler_default_weight_test() {
     printf("OK\n");
 }
 
+void preserve_previous_weight_test() {
+    printf("preserve previous weight test: ");
+
+    int pid = getpid();
+    if (sched_setweight(pid, 12) != 0) {
+        printf("FAIL: (setweight, errno: %d)\n", errno);
+        return;
+    }
+
+    struct sched_param param = { .sched_priority = 0 };
+    if (sched_setscheduler(pid, SCHED_WRR, &param) != 0) {
+        printf("FAIL (setscheduler, errno: %d)\n", errno);
+        return;
+    }
+
+    int weight = sched_getweight(pid);
+    if (weight != 12) {
+        printf("FAIL (weight: %d)\n", weight);
+        return;
+    }
+
+    printf("OK\n");
+}
+
 int main(int argc, char *argv[])
 {
     getweight_error_test();
     setweight_error_test();
     get_default_weight_test();
     set_and_get_test();
-    setscheduler_default_weight_test();
+    reset_to_default_weight_test();
+    preserve_previous_weight_test();
 
     return 0;
 }
