@@ -316,20 +316,11 @@ const struct sched_class wrr_sched_class = {
 	.switched_to = switched_to_wrr,	
 };
 
-/// wrr_se: struct sched_wrr_entity *
-/// wrr_rq: struct wrr_rq *
-#define for_each_sched_wrr_entity(wrr_se, wrr_rq)                              \
-	list_for_each_entry (wrr_se, &(wrr_rq->queue), run_list)
 
 #ifdef CONFIG_SMP
 
-static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
-{
-	load_balance_wrr();
-}
-
 /// @brief Load balancing for WRR scheduler.
-static void load_balance_wrr()
+static void load_balance_wrr(void)
 {
 	int temp_cpu, max_cpu = -1, min_cpu = -1;
 	unsigned int temp_sum, max_sum, min_sum;
@@ -346,6 +337,8 @@ static void load_balance_wrr()
 	struct task_struct *max_task = NULL;
 	struct task_struct *temp_task;
 
+	struct rq_flags rf;
+
 	rcu_read_lock();
 
 	/* Iterate over all online cpus */
@@ -354,8 +347,14 @@ static void load_balance_wrr()
 		temp_rq = cpu_rq(temp_cpu);
 
 		/* Iterate over all tasks in the runqueue */
-		for_each_sched_wrr_entity(temp_wrr_se, &(temp_rq->wrr))
-		{
+		/* 
+			temp_rq : struct rq *
+			temp_rq->wrr : struct wrr_rq
+			&(temp_rq->wrr) : struct wrr_rq *
+
+		 */
+		list_for_each_entry (temp_wrr_se, &(temp_rq->wrr.queue),
+				     run_list) {
 			temp_sum += temp_wrr_se->weight;
 		}
 
@@ -379,11 +378,11 @@ static void load_balance_wrr()
 		return;
 	}
 
-	rq_lock(cpu_rq(max_cpu));
+	rq_lock(cpu_rq(max_cpu), &rf);
 
 	/* Choose the task with the highest weight on max_cpu */
-	for_each_sched_wrr_entity(temp_wrr_se, &(cpu_rq(max_cpu)->wrr))
-	{
+	list_for_each_entry (temp_wrr_se, &(cpu_rq(max_cpu)->wrr.queue),
+			     run_list) {
 		if (temp_wrr_se->weight > max_weight) {
 			temp_task = wrr_task_of(temp_wrr_se);
 
@@ -397,7 +396,8 @@ static void load_balance_wrr()
 				continue;
 
 			/* The task’s CPU affinity should allow migrating the task to min_cpu */
-			if (!is_cpu_allowed(temp_task, min_cpu))
+			if (!cpumask_test_cpu(min_cpu,
+					      &temp_task->cpus_allowed))
 				continue;
 
 			/* All tests passed */
@@ -409,7 +409,7 @@ static void load_balance_wrr()
 
 	/* No transferable task exists, return */
 	if (wrr_se_max == NULL) {
-		rq_unlock(cpu_rq(min_cpu));
+		rq_unlock(cpu_rq(min_cpu), &rf);
 		rcu_read_unlock();
 		return;
 	}
@@ -420,14 +420,14 @@ static void load_balance_wrr()
 	max_task->on_rq = TASK_ON_RQ_MIGRATING;
 	deactivate_task(cpu_rq(max_cpu), max_task, DEQUEUE_NOCLOCK);
 	set_task_cpu(max_task, min_cpu);
-	rq_unlock(cpu_rq(max_cpu), &flags);
+	rq_unlock(cpu_rq(max_cpu), &rf);
 
-	rq_lock(cpu_rq(min_cpu));
+	rq_lock(cpu_rq(min_cpu), &rf);
 	activate_task(cpu_rq(min_cpu), max_task, ENQUEUE_NOCLOCK);
 	max_task->on_rq = TASK_ON_RQ_QUEUED;
 	check_preempt_curr(cpu_rq(min_cpu), max_task, 0);
 
-	rq_unlock(cpu_rq(min_cpu));
+	rq_unlock(cpu_rq(min_cpu), &rf);
 
 	printk(KERN_DEBUG
 	       "[WRR LOAD BALANCING] jiffies: %Ld\n"
@@ -440,6 +440,11 @@ static void load_balance_wrr()
 	rcu_read_unlock();
 }
 
+static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
+{
+	load_balance_wrr();
+}
+
 /* Next time to do periodic load balancing */
 volatile unsigned long next_balance_wrr = 0;
 
@@ -447,7 +452,7 @@ volatile unsigned long next_balance_wrr = 0;
 spinlock_t wrr_balancer_lock; 
 
 /// @brief Trigger the SCHED_SOFTIRQ_WRR(run_load_balance_wrr) if it is time to do periodic load balancing.
-void trigger_load_balance_wrr()
+void trigger_load_balance_wrr(void)
 {
 	/* Spinlock is required to make sure only one CPU actualy does load balancing. */
 	spin_lock(&wrr_balancer_lock);
