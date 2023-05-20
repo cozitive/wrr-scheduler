@@ -3063,6 +3063,8 @@ void scheduler_tick(void)
 
 #ifdef CONFIG_SMP
 	rq->idle_balance = idle_cpu(cpu);
+
+	/* Trigger load balancing for WRR scheduler. */
 	trigger_load_balance_wrr();
 #endif
 }
