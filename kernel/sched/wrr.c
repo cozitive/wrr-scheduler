@@ -380,7 +380,7 @@ static void load_balance_wrr()
 	}
 
 	local_irq_disable();
-	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+	rq_lock(cpu_rq(max_cpu));
 
 	/* Choose the task with the highest weight on max_cpu */
 	for_each_sched_wrr_entity(temp_wrr_se, &(cpu_rq(max_cpu)->wrr))
@@ -398,7 +398,7 @@ static void load_balance_wrr()
 				continue;
 
 			/* The task’s CPU affinity should allow migrating the task to min_cpu */
-			if (!cpumask_test_cpu(min_cpu, &(p->cpus_allowed)))
+			if (!is_cpu_allowed(temp_task, min_cpu))
 				continue;
 
 			/* All tests passed */
@@ -410,19 +410,27 @@ static void load_balance_wrr()
 
 	/* No transferable task exists, return */
 	if (wrr_se_max == NULL) {
-		double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+		rq_unlock(cpu_rq(min_cpu));
 		local_irq_enable();
 		rcu_read_unlock();
 		return;
 	}
 
-	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
 	/* Migrate the task to min_cpu */
-	__migrate_task(max_task, max_cpu, min_cpu);
 
+	max_task->on_rq = TASK_ON_RQ_MIGRATING;
+	deactivate_task(cpu_rq(max_cpu), max_task, DEQUEUE_NOCLOCK);
+	set_task_cpu(max_task, min_cpu);
+	rq_unlock(cpu_rq(max_cpu), &flags);
+
+	rq_lock(cpu_rq(min_cpu));
+	activate_task(cpu_rq(min_cpu), max_task, ENQUEUE_NOCLOCK);
+	max_task->on_rq = TASK_ON_RQ_QUEUED;
+	check_preempt_curr(cpu_rq(min_cpu), max_task, 0);
+
+	rq_unlock(cpu_rq(min_cpu));
 	local_irq_enable();
-
 	rcu_read_unlock();
 }
 
