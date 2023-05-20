@@ -319,8 +319,6 @@ const struct sched_class wrr_sched_class = {
 
 #ifdef CONFIG_SMP
 
-// #pragma GCC push_options
-// #pragma GCC optimize("O0")
 /// @brief Load balancing for WRR scheduler.
 static void load_balance_wrr(void)
 {
@@ -330,7 +328,7 @@ static void load_balance_wrr(void)
 	struct sched_wrr_entity *temp_wrr_se;
 
 	/* Weight of the task with the highest weight on max_cpu */
-	int max_weight = -1;
+	unsigned int max_weight = 0;
 
 	/* The task with the highest weight on max_cpu */
 	struct task_struct *max_task = NULL;
@@ -378,7 +376,7 @@ static void load_balance_wrr(void)
 	/* Choose the task with the highest weight on max_cpu */
 	list_for_each_entry (temp_wrr_se, &(cpu_rq(max_cpu)->wrr.queue),
 			     run_list) {
-		if (temp_wrr_se->weight > max_weight) {
+		if (temp_wrr_se->weight >= max_weight) {
 			temp_task = wrr_task_of(temp_wrr_se);
 
 			/* If the task is currently running, continue */
@@ -433,7 +431,6 @@ static void load_balance_wrr(void)
 
 	local_irq_enable();
 }
-// #pragma GCC pop_options
 
 static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 {
