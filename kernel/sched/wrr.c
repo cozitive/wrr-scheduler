@@ -332,7 +332,7 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 static void load_balance_wrr()
 {
 	int temp_cpu, max_cpu = -1, min_cpu = -1;
-	int temp_sum, max_sum = -1, min_sum = -1;
+	unsigned int temp_sum, max_sum, min_sum;
 	struct rq *temp_rq;
 
 	/* Weight of the task with the highest weight on max_cpu */
@@ -379,7 +379,6 @@ static void load_balance_wrr()
 		return;
 	}
 
-	local_irq_disable();
 	rq_lock(cpu_rq(max_cpu));
 
 	/* Choose the task with the highest weight on max_cpu */
@@ -411,14 +410,13 @@ static void load_balance_wrr()
 	/* No transferable task exists, return */
 	if (wrr_se_max == NULL) {
 		rq_unlock(cpu_rq(min_cpu));
-		local_irq_enable();
 		rcu_read_unlock();
 		return;
 	}
 
-
-	/* Migrate the task to min_cpu */
-
+	/* 
+		Migrate the task to min_cpu 
+	*/
 	max_task->on_rq = TASK_ON_RQ_MIGRATING;
 	deactivate_task(cpu_rq(max_cpu), max_task, DEQUEUE_NOCLOCK);
 	set_task_cpu(max_task, min_cpu);
@@ -430,7 +428,15 @@ static void load_balance_wrr()
 	check_preempt_curr(cpu_rq(min_cpu), max_task, 0);
 
 	rq_unlock(cpu_rq(min_cpu));
-	local_irq_enable();
+
+	printk(KERN_DEBUG
+	       "[WRR LOAD BALANCING] jiffies: %Ld\n"
+	       "[WRR LOAD BALANCING] max_cpu: %d, total_weight: %u\n"
+	       "[WRR LOAD BALANCING] min_cpu: %d, total_weight: %u\n"
+	       "[WRR LOAD BALANCING] migrated task name: %s, task weight: %u\n",
+	       (long long)(jiffies), max_cpu, max_sum, min_cpu, min_sum,
+	       max_task->comm, max_weight);
+
 	rcu_read_unlock();
 }
 
