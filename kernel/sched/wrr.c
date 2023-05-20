@@ -438,7 +438,7 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 }
 
 /* Next time to do periodic load balancing */
-volatile unsigned long next_balance_wrr = 0;
+volatile unsigned long next_balance_wrr = 0; // LB_TODO: jiffies overflow 문제 해결!!!!!! 꼭해야함!!!!!!!!!!
 
 /* Spinlock for load balancing */
 spinlock_t wrr_balancer_lock; 
