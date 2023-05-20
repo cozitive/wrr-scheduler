@@ -316,8 +316,10 @@ const struct sched_class wrr_sched_class = {
 	.switched_to = switched_to_wrr, 
 };
 
-#define for_each_sched_wrr_entity(wrr_se, wrr_rq) \
-	list_for_each_entry(wrr_se, &(wrr_rq)->queue, run_list)
+/// wrr_se: struct sched_wrr_entity *
+/// wrr_rq: struct wrr_rq *
+#define for_each_sched_wrr_entity(wrr_se, wrr_rq)                              \
+	list_for_each_entry (wrr_se, &(wrr_rq->queue), run_list)
 
 #ifdef CONFIG_SMP
 
@@ -328,45 +330,47 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 
 static void load_balance_wrr()
 {
-	int cpu, max_cpu = -1, min_cpu = -1;
-	struct rq *rq;
-	int weight_sum, max_weight_sum = -1, min_weight_sum = -1;
-	struct task_struct *task;
+	int temp_cpu, max_cpu = -1, min_cpu = -1;
+	struct rq *temp_rq;
+	int temp_sum, max_sum = -1, min_sum = -1;
+	struct sched_wrr_entity *temp_wrr_se;
+	int max_weight =
+		-1; // Weight of the task with the highest weight on max_cpu
+	struct sched_wrr_entity *wrr_se_max =
+		NULL; // The task with the highest weight on max_cpu
+	struct task_struct *temp_task;
+	struct task_struct *max_task =
+		NULL; // The task with the highest weight on max_cpu
 
 	rcu_read_lock();
 
-	// Iterate over all online cpus
-	for_each_online_cpu(cpu)
-	{
-		weight_sum = 0;
-		rq = cpu_rq(cpu);
+	/* Iterate over all online cpus */
+	for_each_online_cpu (temp_cpu) {
+		temp_sum = 0;
+		temp_rq = cpu_rq(temp_cpu);
 
-		// Iterate over all tasks in the runqueue
-		for_each_sched_wrr_entity(wrr_se, &rq->wrr)
+		/* Iterate over all tasks in the runqueue */
+		for_each_sched_wrr_entity(temp_wrr_se, &(temp_rq->wrr))
 		{
-			weight_sum += wrr_se->weight;
+			temp_sum += temp_wrr_se->weight;
 		}
 
 		if (max_cpu == -1) // First online CPU
 		{
-			max_cpu = cpu;
-			min_cpu = cpu;
-			max_weight_sum = weight_sum;
-			min_weight_sum = weight_sum;
-		}
-		else if (weight_sum > max_weight_sum)
-		{
-			max_cpu = cpu;
-			max_weight_sum = weight_sum;
-		}
-		else if (weight_sum < min_weight_sum)
-		{
-			min_cpu = cpu;
-			min_weight_sum = weight_sum;
+			max_cpu = temp_cpu;
+			min_cpu = temp_cpu;
+			max_sum = temp_sum;
+			min_sum = temp_sum;
+		} else if (temp_sum >= max_sum) {
+			max_cpu = temp_cpu;
+			max_sum = temp_sum;
+		} else if (temp_sum <= min_sum) {
+			min_cpu = temp_cpu;
+			min_sum = temp_sum;
 		}
 	}
 
-	if (max_cpu == min_cpu) {
+	if (max_cpu == -1 || max_cpu == min_cpu) {
 		rcu_read_unlock();
 		return;
 	}
@@ -374,31 +378,29 @@ static void load_balance_wrr()
 	local_irq_disable();
 	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
-	int max_weight = -1;
-	struct sched_wrr_entity *wrr_se_max = NULL;
-	// Choose the task with the highest weight on max_cpu
-	for_each_sched_wrr_entity(wrr_se, &cpu_rq(max_cpu)->wrr)
+	/* Choose the task with the highest weight on max_cpu */
+	for_each_sched_wrr_entity(temp_wrr_se, &(cpu_rq(max_cpu)->wrr))
 	{
-		if (wrr_se->weight > max_weight)
-		{
-			struct *task_struct p = wrr_task_of(wrr_se);
+		if (temp_wrr_se->weight > max_weight) {
+			temp_task = wrr_task_of(temp_wrr_se);
 
 			/* If the task is currently running, continue */
-			if (p == cpu_rq(max_cpu)->curr)
+			if (temp_task == cpu_rq(max_cpu)->curr)
 				continue;
 
 			/* Migration should not make the total weight of min_cpu equal to or greater than that of max_cpu */
-			if (min_weight_sum + wrr_se->weight >=
-			    max_weight_sum - wrr_se->weight)
+			if (min_sum + temp_wrr_se->weight >=
+			    max_sum - temp_wrr_se->weight)
 				continue;
 
 			/* The task’s CPU affinity should allow migrating the task to min_cpu */
-			if (!cpumask_test_cpu(min_cpu, &p->cpus_allowed))
+			if (!cpumask_test_cpu(min_cpu, &(p->cpus_allowed)))
 				continue;
 
 			/* All tests passed */
-			max_weight = wrr_se->weight;
-			wrr_se_max = wrr_se;
+			max_weight = temp_wrr_se->weight;
+			wrr_se_max = temp_wrr_se;
+			max_task = temp_task;
 		}
 	}
 
@@ -413,8 +415,7 @@ static void load_balance_wrr()
 	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
 	/* Migrate the task to min_cpu */
-	struct task_struct *p = wrr_task_of(wrr_se_max);
-	__migrate_task(p, max_cpu, min_cpu);
+	__migrate_task(max_task, max_cpu, min_cpu);
 
 	local_irq_enable();
 
@@ -422,7 +423,7 @@ static void load_balance_wrr()
 }
 
 volatile unsigned long next_balance_wrr = 0;
-spinlock_t wrr_balancer_lock = SPIN_LOCK_UNLOCKED;
+spinlock_t wrr_balancer_lock;
 
 /*
  * Trigger the SCHED_SOFTIRQ_WRR if it is time to do periodic load balancing.
@@ -430,13 +431,14 @@ spinlock_t wrr_balancer_lock = SPIN_LOCK_UNLOCKED;
 void trigger_load_balance_wrr()
 {
 	/* trigger_load_balance_wrr() checks a timer and if balancing is due, it fires the soft irq with the corresponding flag SCHED_SOFTIRQ_WRR. */
+	/* Spinlock is required to make sure only one CPU triggers load balancing at a time. */
 	spin_lock(&wrr_balancer_lock);
-	if (time_after_eq(jiffies, next_balance_wrr))
-	{
+	if (time_after_eq(jiffies, next_balance_wrr)) {
 		next_balance_wrr = jiffies + msecs_to_jiffies(2000);
 		spin_unlock(&wrr_balancer_lock);
 		raise_softirq(SCHED_SOFTIRQ_WRR);
-	} else spin_unlock(&wrr_balancer_lock);
+	} else
+		spin_unlock(&wrr_balancer_lock);
 }
 
 #endif /* SMP */
@@ -444,6 +446,10 @@ void trigger_load_balance_wrr()
 __init void init_sched_wrr_class(void)
 {
 #ifdef CONFIG_SMP
+	/* Initialize spinlock */
+	spin_lock_init(&wrr_balancer_lock);
+
+	/* Initialize timer */
 	open_softirq(SCHED_SOFTIRQ_WRR, run_load_balance_wrr);
 #endif /* SMP */
 }
