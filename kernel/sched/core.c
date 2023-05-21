@@ -3063,8 +3063,8 @@ void scheduler_tick(void)
 	perf_event_task_tick();
 
 #ifdef CONFIG_SMP
-	rq->idle_balance = idle_cpu(cpu);
-	trigger_load_balance(rq);
+	/* Trigger load balancing for WRR scheduler. */
+	trigger_load_balance_wrr();
 #endif
 }
 
@@ -6092,7 +6092,7 @@ void __init sched_init(void)
 #ifdef CONFIG_SMP
 	idle_thread_set_boot_cpu();
 #endif
-	init_sched_fair_class();
+	init_sched_wrr_class();
 
 	init_schedstats();
 

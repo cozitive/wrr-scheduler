@@ -1611,6 +1611,7 @@ extern const struct sched_class wrr_sched_class;
 extern void update_group_capacity(struct sched_domain *sd, int cpu);
 
 extern void trigger_load_balance(struct rq *rq);
+extern void trigger_load_balance_wrr(void);
 
 extern void set_cpus_allowed_common(struct task_struct *p, const struct cpumask *new_mask);
 
@@ -1650,6 +1651,7 @@ extern void update_max_interval(void);
 extern void init_sched_dl_class(void);
 extern void init_sched_rt_class(void);
 extern void init_sched_fair_class(void);
+extern void init_sched_wrr_class(void);
 
 extern void reweight_task(struct task_struct *p, int prio);
 
