@@ -3,8 +3,6 @@
  */
 #include "sched.h"
 
-#define WRR_TIMESLICE 10
-
 /// @brief Initialize a WRR runqueue.
 /// @param wrr_rq a WRR runqueue to initiate.
 void init_wrr_rq(struct wrr_rq *wrr_rq)
@@ -71,11 +69,11 @@ static inline void inc_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq 
 /// @param wrr_rq a WRR runqueue.
 static inline void dec_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq *wrr_rq)
 {
-	WARN_ON(!wrr_rq->nr_running);
-	WARN_ON(!wrr_rq->total_weight);
 	wrr_se->on_rq = 0;
 	wrr_rq->nr_running -= 1;
 	wrr_rq->total_weight -= wrr_se->weight;
+	WARN_ON(wrr_rq->nr_running < 0);
+	WARN_ON(wrr_rq->total_weight < 0);
 }
 
 /// @brief Enqueue a task to WRR runqueue.
@@ -237,14 +235,15 @@ static void update_curr_wrr(struct rq *rq)
 /// @param queued queued tick flag (not used).
 static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 {
+	struct task_struct *curr = rq->curr;
 	struct sched_wrr_entity *wrr_se = &p->wrr;
 
 	update_curr_wrr(rq);
 
-	if (p->policy != SCHED_WRR)
+	if (curr->sched_class != &wrr_sched_class)
 		return;
 
-	if (--wrr_se->time_slice) {
+	if (--wrr_se->time_slice > 0) {
 		return;
 	}
 
@@ -316,3 +315,155 @@ const struct sched_class wrr_sched_class = {
 	.switched_from = switched_from_wrr,
 	.switched_to = switched_to_wrr,	
 };
+
+
+#ifdef CONFIG_SMP
+
+/// @brief Load balancing for WRR scheduler.
+static void load_balance_wrr(void)
+{
+	int is_first_online_cpu = 1; // Flag variable for `for_each_online_cpu` loop
+	unsigned int temp_cpu, max_cpu, min_cpu;
+	unsigned int temp_total, max_total, min_total;
+	struct sched_wrr_entity *temp_wrr_se;
+
+	/* Weight of the task with the highest weight on max_cpu */
+	unsigned int max_weight = 0;
+
+	/* The task with the highest weight on max_cpu */
+	struct task_struct *max_task = NULL;
+	struct task_struct *temp_task;
+
+	struct rq_flags rf;
+
+	rcu_read_lock();
+
+	/* Iterate over all online cpus */
+	for_each_online_cpu (temp_cpu) {
+		temp_total = cpu_rq(temp_cpu)->wrr.total_weight;
+
+		if (is_first_online_cpu) // First online CPU
+		{
+			max_cpu = temp_cpu;
+			min_cpu = temp_cpu;
+			max_total = temp_total;
+			min_total = temp_total;
+			is_first_online_cpu = 0;
+		} else if (temp_total >= max_total) {
+			max_cpu = temp_cpu;
+			max_total = temp_total;
+		} else if (temp_total <= min_total) {
+			min_cpu = temp_cpu;
+			min_total = temp_total;
+		}
+	}
+
+	rcu_read_unlock();
+
+	if (max_cpu == min_cpu) {
+		return;
+	}
+
+	local_irq_disable();
+	rq_lock(cpu_rq(max_cpu), &rf);
+
+	/* Choose the task with the highest weight on max_cpu */
+	list_for_each_entry (temp_wrr_se, &(cpu_rq(max_cpu)->wrr.queue),
+			     run_list) {
+		if (temp_wrr_se->weight >= max_weight) {
+			temp_task = wrr_task_of(temp_wrr_se);
+
+			/* If the task is currently running, continue */
+			if (temp_task == cpu_rq(max_cpu)->curr)
+				continue;
+
+			/* Migration should not make the total weight of min_cpu equal to or greater than that of max_cpu */
+			if (min_total + temp_wrr_se->weight >=
+			    max_total - temp_wrr_se->weight)
+				continue;
+
+			/* The task’s CPU affinity should allow migrating the task to min_cpu */
+			if (!cpumask_test_cpu(min_cpu,
+					      &temp_task->cpus_allowed))
+				continue;
+
+			/* All tests passed */
+			max_weight = temp_wrr_se->weight;
+			max_task = temp_task;
+		}
+	}
+
+	/* No transferable task exists, return */
+	if (max_task == NULL) {
+		rq_unlock(cpu_rq(max_cpu), &rf);
+		local_irq_enable();
+		return;
+	}
+
+	/* 
+		Migrate the task to min_cpu 
+	*/
+	max_task->on_rq = TASK_ON_RQ_MIGRATING;
+	deactivate_task(cpu_rq(max_cpu), max_task, DEQUEUE_NOCLOCK);
+	set_task_cpu(max_task, min_cpu);
+	rq_unlock(cpu_rq(max_cpu), &rf);
+
+	rq_lock(cpu_rq(min_cpu), &rf);
+	activate_task(cpu_rq(min_cpu), max_task, ENQUEUE_NOCLOCK);
+	max_task->on_rq = TASK_ON_RQ_QUEUED;
+	check_preempt_curr(cpu_rq(min_cpu), max_task, 0);
+
+	rq_unlock(cpu_rq(min_cpu), &rf);
+
+	printk(KERN_DEBUG
+	       "[WRR LOAD BALANCING] jiffies: %Ld\n"
+	       "[WRR LOAD BALANCING] max_cpu: %d, total_weight: %u\n"
+	       "[WRR LOAD BALANCING] min_cpu: %d, total_weight: %u\n"
+	       "[WRR LOAD BALANCING] migrated task name: %s, task weight: %u\n",
+	       (long long)(jiffies), max_cpu, max_total, min_cpu, min_total,
+	       max_task->comm, max_weight);
+
+	local_irq_enable();
+}
+
+static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
+{
+	load_balance_wrr();
+}
+
+/* Next time to do periodic load balancing */
+volatile unsigned long next_balance_wrr = 0; // LB_TODO: jiffies overflow 문제 해결!!!!!! 꼭해야함!!!!!!!!!!
+
+/* Spinlock for load balancing */
+spinlock_t wrr_balancer_lock; 
+
+/// @brief Trigger the SCHED_SOFTIRQ(run_load_balance_wrr) if it is time to do periodic load balancing.
+void trigger_load_balance_wrr(void)
+{
+	/* Spinlock is required to make sure only one CPU actualy does load balancing. */
+	spin_lock(&wrr_balancer_lock);
+
+	if (time_after_eq(jiffies, next_balance_wrr)) {
+		/* Set next load balance time to 2000ms after. */
+		next_balance_wrr = jiffies + msecs_to_jiffies(2000);
+		spin_unlock(&wrr_balancer_lock);
+
+		/* Trigger the SCHED_SOFTIRQ(run_load_balance_wrr) */
+		raise_softirq(SCHED_SOFTIRQ);
+	} else
+		/* Time not due for load balancing, therefore unlock and return */
+		spin_unlock(&wrr_balancer_lock);
+}
+
+#endif /* SMP */
+
+__init void init_sched_wrr_class(void)
+{
+#ifdef CONFIG_SMP
+	/* Initialize spinlock */
+	spin_lock_init(&wrr_balancer_lock);
+
+	/* Initialize timer */
+	open_softirq(SCHED_SOFTIRQ, run_load_balance_wrr);
+#endif /* SMP */
+}
