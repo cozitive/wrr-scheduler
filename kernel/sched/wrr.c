@@ -322,9 +322,9 @@ const struct sched_class wrr_sched_class = {
 /// @brief Load balancing for WRR scheduler.
 static void load_balance_wrr(void)
 {
-	int temp_cpu, max_cpu = -1, min_cpu = -1;
-	unsigned int temp_sum, max_sum, min_sum;
-	struct rq *temp_rq;
+	int is_first_online_cpu = 1; // Flag variable for `for_each_online_cpu` loop
+	unsigned int temp_cpu, max_cpu, min_cpu;
+	unsigned int temp_total, max_total, min_total;
 	struct sched_wrr_entity *temp_wrr_se;
 
 	/* Weight of the task with the highest weight on max_cpu */
@@ -340,27 +340,21 @@ static void load_balance_wrr(void)
 
 	/* Iterate over all online cpus */
 	for_each_online_cpu (temp_cpu) {
-		temp_sum = 0;
-		temp_rq = cpu_rq(temp_cpu);
+		temp_total = cpu_rq(temp_cpu)->wrr.total_weight;
 
-		/* Iterate over all tasks in the runqueue */
-		list_for_each_entry (temp_wrr_se, &(temp_rq->wrr.queue),
-				     run_list) {
-			temp_sum += temp_wrr_se->weight;
-		}
-
-		if (max_cpu == -1) // First online CPU
+		if (is_first_online_cpu) // First online CPU
 		{
 			max_cpu = temp_cpu;
 			min_cpu = temp_cpu;
-			max_sum = temp_sum;
-			min_sum = temp_sum;
-		} else if (temp_sum >= max_sum) {
+			max_total = temp_total;
+			min_total = temp_total;
+			is_first_online_cpu = 0;
+		} else if (temp_total >= max_total) {
 			max_cpu = temp_cpu;
-			max_sum = temp_sum;
-		} else if (temp_sum <= min_sum) {
+			max_total = temp_total;
+		} else if (temp_total <= min_total) {
 			min_cpu = temp_cpu;
-			min_sum = temp_sum;
+			min_total = temp_total;
 		}
 	}
 
@@ -384,8 +378,8 @@ static void load_balance_wrr(void)
 				continue;
 
 			/* Migration should not make the total weight of min_cpu equal to or greater than that of max_cpu */
-			if (min_sum + temp_wrr_se->weight >=
-			    max_sum - temp_wrr_se->weight)
+			if (min_total + temp_wrr_se->weight >=
+			    max_total - temp_wrr_se->weight)
 				continue;
 
 			/* The task’s CPU affinity should allow migrating the task to min_cpu */
@@ -426,7 +420,7 @@ static void load_balance_wrr(void)
 	       "[WRR LOAD BALANCING] max_cpu: %d, total_weight: %u\n"
 	       "[WRR LOAD BALANCING] min_cpu: %d, total_weight: %u\n"
 	       "[WRR LOAD BALANCING] migrated task name: %s, task weight: %u\n",
-	       (long long)(jiffies), max_cpu, max_sum, min_cpu, min_sum,
+	       (long long)(jiffies), max_cpu, max_total, min_cpu, min_total,
 	       max_task->comm, max_weight);
 
 	local_irq_enable();
