@@ -466,7 +466,7 @@ print_task(struct seq_file *m, struct rq *rq, struct task_struct *p)
 	// 	SPLIT_NS(p->se.sum_exec_runtime),
 	// 	SPLIT_NS(schedstat_val_or_zero(p->se.statistics.sum_sleep_runtime)));
 
-	SEQ_printf(m, "%15s %5d %10d %10d %7d", p->comm, task_pid_nr(p), p->wrr.weight, p->wrr.time_slice, p->policy);
+	SEQ_printf(m, "%15s %5d %6d %7d %10d %7d", p->comm, task_pid_nr(p), p->prio, p->wrr.weight, p->wrr.time_slice, p->policy);
 
 #ifdef CONFIG_NUMA_BALANCING
 	SEQ_printf(m, " %d %d", task_node(p), task_numa_group_id(p));
@@ -488,7 +488,7 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 	// 	   "     wait-time             sum-exec        sum-sleep     weight  timeslice\n");
 	// SEQ_printf(m, "-------------------------------------------------------"
 	// 	   "----------------------------------------------------\n");
-	SEQ_printf(m, " S           task   PID     weight  timeslice  policy\n");
+	SEQ_printf(m, " S           task   PID   prio  weight  timeslice  policy\n");
 	SEQ_printf(m, "-------------------------------------------------------"
 		   "----------------------------------------------------\n");
 

@@ -2169,7 +2169,7 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->rt.on_list		= 0;
 
 	INIT_LIST_HEAD(&p->wrr.run_list);
-	p->wrr.time_slice = WRR_DEFAULT_WEIGHT * WRR_TIMESLICE;
+	p->wrr.time_slice = p->wrr.weight * WRR_TIMESLICE;
 	p->wrr.on_rq = 0;
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
@@ -2315,11 +2315,12 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 	 * Revert to default priority/policy on fork if requested.
 	 */
 	if (unlikely(p->sched_reset_on_fork)) {
-		if (task_has_dl_policy(p) || task_has_rt_policy(p)) {
-			// p->policy = SCHED_NORMAL;
+		if (task_has_dl_policy(p) || task_has_rt_policy(p) || task_has_wrr_policy(p)) {
 			p->policy = SCHED_WRR;
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
+			p->wrr.weight = WRR_DEFAULT_WEIGHT;
+			p->wrr.time_slice = WRR_DEFAULT_WEIGHT * WRR_TIMESLICE;
 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
 			p->static_prio = NICE_TO_PRIO(0);
 
@@ -2333,7 +2334,7 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 		p->sched_reset_on_fork = 0;
 	}
 
-	else if (dl_prio(p->prio))
+	if (dl_prio(p->prio))
 		return -EAGAIN;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
@@ -4094,7 +4095,7 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
 	if (keep_boost)
 		p->prio = rt_effective_prio(p, p->prio);
 
-	else if (dl_prio(p->prio))
+	if (dl_prio(p->prio))
 		p->sched_class = &dl_sched_class;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
@@ -4331,6 +4332,12 @@ change:
 
 	prev_class = p->sched_class;
 	__setscheduler(rq, p, attr, pi);
+
+	// set to default weight when newly scheduled to WRR scheduler
+	if ((p->sched_class == &wrr_sched_class) && (prev_class != &wrr_sched_class)) {
+		p->wrr.weight = WRR_DEFAULT_WEIGHT;
+		p->wrr.time_slice = WRR_DEFAULT_WEIGHT * WRR_TIMESLICE;
+	}
 
 	if (queued) {
 		/*
@@ -6172,7 +6179,6 @@ void normalize_rt_tasks(void)
 {
 	struct task_struct *g, *p;
 	struct sched_attr attr = {
-		// .sched_policy = SCHED_NORMAL,
 		.sched_policy = SCHED_WRR,
 	};
 

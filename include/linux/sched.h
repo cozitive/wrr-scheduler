@@ -575,7 +575,7 @@ struct sched_wrr_entity {
 };
 
 #define WRR_DEFAULT_WEIGHT 10
-#define WRR_TIMESLICE 10
+#define WRR_TIMESLICE (10 * HZ / 1000) // 10ms
 
 union rcu_special {
 	struct {
