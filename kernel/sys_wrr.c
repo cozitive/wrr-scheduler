@@ -11,7 +11,7 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 	struct task_struct *p;
 	struct sched_wrr_entity *wrr_se;
 	struct wrr_rq *wrr_rq;
-	unsigned int weight_diff;
+	int weight_diff;
 
 	// pid must be positive
 	if (pid < 0) {
