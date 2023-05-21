@@ -116,15 +116,32 @@ void setweight_invalid_pid_test() {
     printf("OK\n");
 }
 
-void setweight_invalid_permission_test() {
-    printf("    invalid permission: ");
+void setweight_decrease_invalid_permission_test() {
+    printf("    invalid permission (decrease): ");
 
     if (getuid() == 0) {    // root
         printf("no test (root user)\n");
         return;
     }
 
-    int ret = sched_setweight(1, 20);   // systemd
+    int ret = sched_setweight(1, 1);    // systemd
+    if ((ret != -1) || (errno != EPERM)) {
+        printf("FAIL (errno: %d)\n", errno);
+        return;
+    }
+
+    printf("OK\n");
+}
+
+void setweight_increase_invalid_permission_test() {
+    printf("    invalid permission (increase): ");
+
+    if (getuid() == 0) {    // root
+        printf("no test (root user)\n");
+        return;
+    }
+
+    int ret = sched_setweight(getpid(), 11);
     if ((ret != -1) || (errno != EPERM)) {
         printf("FAIL (errno: %d)\n", errno);
         return;
@@ -169,7 +186,8 @@ void setweight_error_test() {
     setweight_weight_overflow_test();
     setweight_weight_underflow_test();
     setweight_invalid_pid_test();
-    setweight_invalid_permission_test();
+    setweight_decrease_invalid_permission_test();
+    setweight_increase_invalid_permission_test();
     setweight_invalid_policy_test();
 }
 
@@ -189,14 +207,14 @@ void set_and_get_test() {
     printf("set and get test: ");
 
     int pid = getpid();
-    if (sched_setweight(pid, 12) != 0) {
-        printf("FAIL (errno: %d)\n", errno);
+    if (sched_setweight(pid, 9) != 0) {
+        printf("FAIL (setweight, errno: %d)\n", errno);
         return;
     }
 
     int weight = sched_getweight(pid);
-    if (weight != 12) {
-        printf("FAIL (weight: %d)\n", weight);
+    if (weight != 9) {
+        printf("FAIL (getweight, weight: %d)\n", weight);
         return;
     }
 
@@ -241,8 +259,13 @@ void reset_to_default_weight_test() {
 void preserve_previous_weight_test() {
     printf("preserve previous weight test: ");
 
+    if (getuid() != 0) {
+        printf("no test (not root user)\n");
+        return;
+    }
+
     int pid = getpid();
-    if (sched_setweight(pid, 12) != 0) {
+    if (sched_setweight(pid, 9) != 0) {
         printf("FAIL: (setweight, errno: %d)\n", errno);
         return;
     }
@@ -254,7 +277,23 @@ void preserve_previous_weight_test() {
     }
 
     int weight = sched_getweight(pid);
-    if (weight != 12) {
+    if (weight != 9) {
+        printf("FAIL (weight: %d)\n", weight);
+        return;
+    }
+
+    printf("OK\n");
+}
+
+void idle_weight_test() {
+    printf("idle weight test: ");
+
+    int weight = sched_getweight(0);
+    if (weight == -1) {
+        printf("FAIL (errno: %d)\n", errno);
+        return;
+    }
+    if (weight != 10) {
         printf("FAIL (weight: %d)\n", weight);
         return;
     }
@@ -270,6 +309,7 @@ int main(int argc, char *argv[])
     set_and_get_test();
     reset_to_default_weight_test();
     preserve_previous_weight_test();
+    idle_weight_test();
 
     return 0;
 }
