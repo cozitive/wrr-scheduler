@@ -3,8 +3,6 @@
  */
 #include "sched.h"
 
-#define WRR_TIMESLICE 10
-
 /// @brief Initialize a WRR runqueue.
 /// @param wrr_rq a WRR runqueue to initiate.
 void init_wrr_rq(struct wrr_rq *wrr_rq)
@@ -71,11 +69,11 @@ static inline void inc_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq 
 /// @param wrr_rq a WRR runqueue.
 static inline void dec_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq *wrr_rq)
 {
-	WARN_ON(!wrr_rq->nr_running);
-	WARN_ON(!wrr_rq->total_weight);
 	wrr_se->on_rq = 0;
 	wrr_rq->nr_running -= 1;
 	wrr_rq->total_weight -= wrr_se->weight;
+	WARN_ON(wrr_rq->nr_running < 0);
+	WARN_ON(wrr_rq->total_weight < 0);
 }
 
 /// @brief Enqueue a task to WRR runqueue.
@@ -237,14 +235,15 @@ static void update_curr_wrr(struct rq *rq)
 /// @param queued queued tick flag (not used).
 static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 {
+	struct task_struct *curr = rq->curr;
 	struct sched_wrr_entity *wrr_se = &p->wrr;
 
 	update_curr_wrr(rq);
 
-	if (p->policy != SCHED_WRR)
+	if (curr->sched_class != &wrr_sched_class)
 		return;
 
-	if (--wrr_se->time_slice) {
+	if (--wrr_se->time_slice > 0) {
 		return;
 	}
 
