@@ -159,6 +159,7 @@ static void put_prev_task_wrr(struct rq *rq, struct task_struct *prev)
 }
 
 #ifdef CONFIG_SMP
+
 /// @brief Select a CPU to execute a task (with minimum total weight).
 /// @param p a task to be enqueued in a runqueue.
 /// @param cpu previously executed CPU index.
@@ -182,25 +183,6 @@ static int select_task_rq_wrr(struct task_struct *p, int cpu, int sd_flag, int w
 	return min_cpu_index;
 }
 
-static void migrate_task_rq_wrr(struct task_struct *p, int new_cpu)
-{
-	// WRR_TODO
-}
-
-static void task_woken_wrr(struct rq *this_rq, struct task_struct *task)
-{
-	// WRR_TODO
-}
-
-static void rq_online_wrr(struct rq *rq)
-{
-	// WRR_TODO
-}
-
-static void rq_offline_wrr(struct rq *rq)
-{
-	// WRR_TODO
-}
 #endif
 
 /// @brief Update statistics of the current WRR task.
@@ -270,8 +252,6 @@ static void set_curr_task_wrr(struct rq *rq) {}
 
 static void prio_changed_wrr(struct rq *rq, struct task_struct *p, int oldprio) {}
 
-static void switched_from_wrr(struct rq *rq, struct task_struct *p) {}
-
 static void switched_to_wrr(struct rq *rq, struct task_struct *p) {}
 
 #ifdef CONFIG_SCHED_DEBUG
@@ -298,11 +278,7 @@ const struct sched_class wrr_sched_class = {
 
 #ifdef CONFIG_SMP
 	.select_task_rq = select_task_rq_wrr,
-	.migrate_task_rq = migrate_task_rq_wrr,
-	.task_woken = task_woken_wrr,
 	.set_cpus_allowed = set_cpus_allowed_common,
-	.rq_online = rq_online_wrr,
-	.rq_offline = rq_offline_wrr,
 #endif
 
 	.update_curr = update_curr_wrr,
@@ -312,7 +288,6 @@ const struct sched_class wrr_sched_class = {
 	.check_preempt_curr = check_preempt_curr_wrr,
 	.set_curr_task = set_curr_task_wrr,
 	.prio_changed = prio_changed_wrr,
-	.switched_from = switched_from_wrr,
 	.switched_to = switched_to_wrr,	
 };
 
