@@ -17,8 +17,7 @@ void factorize(int x);
 
 int main(int argc, char *argv[])
 {
-    srand(time(NULL));
-    int x = (argc > 1) ? rand() : X_DEFAULT;
+    int x = (argc > 1) ? atoi(argv[1]) : X_DEFAULT;
 
 	if (getuid() != 0) {
 		printf("WRR turnaround time test should be run in root user\n");
@@ -44,7 +43,6 @@ int main(int argc, char *argv[])
 	if (!is_child) {
 		for (int i = 0; i < MAX_WEIGHT; i++) {
 			sched_setweight(pids[i], i + 1);
-			// waitpid(pids[i], NULL, 0);	// wait for child process to terminate
 		}
 	} else {
 		struct timeval start, end;
@@ -61,12 +59,6 @@ int main(int argc, char *argv[])
 		turnaround[weight - 1] = elapsed;
 		return 0;
 	}
-
-	// FILE *f = fopen("out.txt", "w");
-	// for (int i = 0; i < 20; i++) {
-	// 	fprintf(f, "weight: %d\tsum: %lf\tavg: %lf\n", i + 1, turnaround[i], turnaround[i] / TRIAL_COUNT);
-	// }	
-	// fclose(f);
 
 	return 0;
 }
