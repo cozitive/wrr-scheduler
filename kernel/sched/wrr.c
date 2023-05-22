@@ -123,7 +123,7 @@ static void requeue_task_wrr(struct rq *rq, struct task_struct *p)
 	if (!on_wrr_rq(wrr_se))
 		return;
 
-	list_move(&wrr_se->run_list, &wrr_rq->queue);
+	list_move_tail(&wrr_se->run_list, &wrr_rq->queue);
 }
 
 /// @brief Requeue the current WRR task when yielding.
@@ -261,7 +261,7 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 /// @return the WRR timeslice of `task`.
 static unsigned int get_rr_interval_wrr(struct rq *rq, struct task_struct *task)
 {
-	return task->wrr.weight * WRR_TIMESLICE;
+	return msecs_to_jiffies(task->wrr.weight * WRR_TIMESLICE);
 }
 
 static void check_preempt_curr_wrr(struct rq *rq, struct task_struct *p, int flags) {}
