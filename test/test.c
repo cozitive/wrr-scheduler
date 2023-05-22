@@ -1,59 +1,72 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/unistd.h>
-#include <linux/sched.h>
+#include <stdlib.h>
 #include <sched.h>
 #include <sys/time.h>
 #include "wrappers.h"
 
-double total_weight[20];
-int trial_num = 3;
+#define X_DEFAULT 999999937
+#define MAX_WEIGHT 20
+#define TRIAL_COUNT 3
+
+void factorize(int x);
 
 int main(int argc, char *argv[])
 {
     srand(time(NULL));
-    int x = 999999937;
+    int x = (argc > 1) ? rand() : X_DEFAULT;
 	int pid = getpid();
     struct timeval start, end;
+	double turnaround[MAX_WEIGHT];
 
-	printf("trial: pid[%d]\n", pid);
+	printf("WRR turnaround time test: prime factoriazation of %d\n\n", x);
 
-	for (int weight = 0; weight < 20; weight++) {
-		total_weight[weight] = 0;
-		printf("==== weight <%d> ====\n", weight+1);
-		sched_setweight(pid, weight+1);
+	for (int weight = 1; weight <= MAX_WEIGHT; weight++) {
+		int i = weight - 1;
+		turnaround[i] = 0;
+		printf("========== weight <%d> ==========\n", weight);
+		sched_setweight(pid, weight);
 
-		for (int cnt = 0; cnt < trial_num; cnt++) {
+		for (int cnt = 0; cnt < TRIAL_COUNT; cnt++) {
 			gettimeofday(&start, NULL);
-            //if there's no input, x is default 999999937
-			if (argc > 1){ x = rand(); }
-			else{ x = 999999937; }
-
-			int div = 2;
-			while (x > 1) {
-       			if (x % div == 0) {
-            		printf("%d ", div);
-            		x /= div;
-        		} else {
-            		div += 2;
-        		}
-    		}
+			factorize(x);
 			gettimeofday(&end, NULL);
 
 			double elapsed = (double)(end.tv_usec - start.tv_usec) / 1000000 + (double)(end.tv_sec - start.tv_sec);
-			printf("\t[%d] %lf\n", cnt, elapsed);
-			total_weight[weight] += elapsed;
+			printf("\t[%d] %lf secs\n", cnt, elapsed);
+			turnaround[i] += elapsed;
 		}
-		printf("----------\n");
-		printf("sum: %lf\tavg: %lf\n\n", total_weight[weight], total_weight[weight]/trial_num);
+		printf("---------------------------------\n");
+		printf("sum: %lf secs\tavg: %lf secs\n\n", turnaround[i], turnaround[i] / TRIAL_COUNT);
 	}
 
 	FILE *f = fopen("out.txt", "w");
 	for (int i = 0; i < 20; i++) {
-		fprintf(f, "weight: %d\tsum: %lf\tavg: %lf\n", i+1, total_weight[i], total_weight[i]/trial_num);
+		fprintf(f, "weight: %d\tsum: %lf\tavg: %lf\n", i + 1, turnaround[i], turnaround[i] / TRIAL_COUNT);
 	}	
 	fclose(f);
 
 	return 0;
+}
+
+void factorize(int x)
+{
+	int div = 2;
+	int is_first = 1;
+
+	printf("%d = ", x);
+	while (x > 1) {
+		if (x % div == 0) {
+			if (is_first) {
+				printf("%d", div);
+				is_first = 0;
+			} else {
+				printf(" * %d", div);
+			}
+			x /= div;
+		} else {
+			div++;
+		}
+	}
 }
