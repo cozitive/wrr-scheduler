@@ -9,7 +9,7 @@
 int main(int argc, char *argv[])
 {
 	if (getuid() != 0) {
-		printf("WRR turnaround time test should be run in root user\n");
+		printf("should be run in root user\n");
 		return 0;
 	}
     int pid = getpid();
