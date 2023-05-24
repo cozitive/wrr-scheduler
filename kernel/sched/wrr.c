@@ -351,7 +351,7 @@ static void load_balance_wrr(void)
 			temp_task = wrr_task_of(temp_wrr_se);
 
 			/* If the task is currently running, continue */
-			if (temp_task == cpu_rq(max_cpu)->curr)
+			if (task_running(cpu_rq(max_cpu), temp_task))
 				continue;
 
 			/* Migration should not make the total weight of min_cpu equal to or greater than that of max_cpu */
