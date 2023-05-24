@@ -11,7 +11,7 @@
 #define MAX_WEIGHT 20
 #define TRIAL_COUNT 3
 
-double turnaround[MAX_WEIGHT];
+//double turnaround[MAX_WEIGHT];
 
 void factorize(int x);
 
@@ -26,25 +26,10 @@ int main(int argc, char *argv[])
 
 	printf("WRR turnaround time test: prime factoriazation of %d\n\n", x);
 
-	pid_t pids[MAX_WEIGHT];
-	int is_child = 0;
-	int weight = 0;
-	for (int i = 0; i < MAX_WEIGHT; i++) {
-		pid_t pid = fork();
-		if (pid != 0) {
-			pids[i] = pid;
-		} else {
-			is_child = 1;
-			weight = i + 1;
-			break;	// stop fork in child process
-		}
-	}
+	pid_t pid = getpid();
+	for (int weight = 1; weight <= MAX_WEIGHT; weight++) {
+		sched_setweight(pid, weight);
 
-	if (!is_child) {
-		for (int i = 0; i < MAX_WEIGHT; i++) {
-			sched_setweight(pids[i], i + 1);
-		}
-	} else {
 		struct timeval start, end;
 		double elapsed;
 		
@@ -56,8 +41,7 @@ int main(int argc, char *argv[])
 
 		elapsed = (double)(end.tv_usec - start.tv_usec) / 1000000 + (double)(end.tv_sec - start.tv_sec);
 		printf("[%d] weight %2d: %lf secs\n", weight, weight, elapsed);
-		turnaround[weight - 1] = elapsed;
-		return 0;
+		//turnaround[weight - 1] = elapsed;
 	}
 
 	return 0;
