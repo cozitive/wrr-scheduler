@@ -24,7 +24,7 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 	}
 
 	// find task with the given pid
-	p = (pid != 0) ? find_task_by_vpid(pid) : &init_task;
+	p = (pid != 0) ? find_task_by_vpid(pid) : current;
 	if (p == NULL) {
 		return -ESRCH;
 	}
