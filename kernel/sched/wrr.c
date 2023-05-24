@@ -298,8 +298,8 @@ const struct sched_class wrr_sched_class = {
 static void load_balance_wrr(void)
 {
 	int is_first_online_cpu = 1; // Flag variable for `for_each_online_cpu` loop
-	unsigned int temp_cpu, max_cpu, min_cpu;
-	unsigned int temp_total, max_total, min_total;
+	unsigned int temp_cpu, max_cpu = 1000, min_cpu = 1000;
+	unsigned int temp_total, max_total = 0, min_total = 0;
 	struct sched_wrr_entity *temp_wrr_se;
 
 	/* Weight of the task with the highest weight on max_cpu */
