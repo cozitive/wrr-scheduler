@@ -309,6 +309,8 @@ static void load_balance_wrr(void)
 	struct task_struct *max_task = NULL;
 	struct task_struct *temp_task;
 
+	unsigned long irq_flags;
+
 	rcu_read_lock();
 
 	/* Iterate over all online cpus */
@@ -337,7 +339,7 @@ static void load_balance_wrr(void)
 		return;
 	}
 
-	local_irq_disable();
+	local_irq_save(irq_flags);
 	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
 	/* Choose the task with the highest weight on max_cpu */
@@ -369,7 +371,7 @@ static void load_balance_wrr(void)
 	/* No transferable task exists, return */
 	if (max_task == NULL) {
 		double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
-		local_irq_enable();
+		local_irq_restore(irq_flags);
 		return;
 	}
 
@@ -394,7 +396,7 @@ static void load_balance_wrr(void)
 
 	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
-	local_irq_enable();
+	local_irq_restore(irq_flags);
 }
 
 static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
