@@ -341,6 +341,8 @@ static void load_balance_wrr(void)
 
 	local_irq_save(irq_flags);
 	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+	update_rq_clock(cpu_rq(max_cpu));
+	update_rq_clock(cpu_rq(min_cpu));
 
 	/* Choose the task with the highest weight on max_cpu */
 	list_for_each_entry (temp_wrr_se, &(cpu_rq(max_cpu)->wrr.queue),
