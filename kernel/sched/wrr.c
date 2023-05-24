@@ -340,7 +340,7 @@ static void load_balance_wrr(void)
 	}
 
 	local_irq_disable();
-	rq_lock(cpu_rq(max_cpu), &rf);
+	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
 	/* Choose the task with the highest weight on max_cpu */
 	list_for_each_entry (temp_wrr_se, &(cpu_rq(max_cpu)->wrr.queue),
@@ -370,7 +370,7 @@ static void load_balance_wrr(void)
 
 	/* No transferable task exists, return */
 	if (max_task == NULL) {
-		rq_unlock(cpu_rq(max_cpu), &rf);
+		double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 		local_irq_enable();
 		return;
 	}
@@ -381,14 +381,12 @@ static void load_balance_wrr(void)
 	max_task->on_rq = TASK_ON_RQ_MIGRATING;
 	deactivate_task(cpu_rq(max_cpu), max_task, DEQUEUE_NOCLOCK);
 	set_task_cpu(max_task, min_cpu);
-	rq_unlock(cpu_rq(max_cpu), &rf);
 
-	rq_lock(cpu_rq(min_cpu), &rf);
 	activate_task(cpu_rq(min_cpu), max_task, ENQUEUE_NOCLOCK);
 	max_task->on_rq = TASK_ON_RQ_QUEUED;
 	check_preempt_curr(cpu_rq(min_cpu), max_task, 0);
 
-	rq_unlock(cpu_rq(min_cpu), &rf);
+	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
 	printk(KERN_DEBUG
 	       "[WRR LOAD BALANCING] jiffies: %Ld\n"
