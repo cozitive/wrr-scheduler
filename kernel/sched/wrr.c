@@ -309,8 +309,6 @@ static void load_balance_wrr(void)
 	struct task_struct *max_task = NULL;
 	struct task_struct *temp_task;
 
-	struct rq_flags rf;
-
 	rcu_read_lock();
 
 	/* Iterate over all online cpus */
