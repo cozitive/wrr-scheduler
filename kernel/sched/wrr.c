@@ -384,8 +384,6 @@ static void load_balance_wrr(void)
 	max_task->on_rq = TASK_ON_RQ_QUEUED;
 	check_preempt_curr(cpu_rq(min_cpu), max_task, 0);
 
-	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
-
 	printk(KERN_DEBUG
 	       "[WRR LOAD BALANCING] jiffies: %Ld\n"
 	       "[WRR LOAD BALANCING] max_cpu: %d, total_weight: %u\n"
@@ -393,6 +391,8 @@ static void load_balance_wrr(void)
 	       "[WRR LOAD BALANCING] migrated task name: %s, task weight: %u\n",
 	       (long long)(jiffies), max_cpu, max_total, min_cpu, min_total,
 	       max_task->comm, max_weight);
+
+	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 
 	local_irq_enable();
 }
