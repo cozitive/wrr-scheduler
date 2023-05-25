@@ -311,6 +311,7 @@ static void load_balance_wrr(void)
 
 	unsigned long irq_flags;
 
+	/* RCU read lock, to synchronize access to multiple CPUs */
 	rcu_read_lock();
 
 	/* Iterate over all online cpus */
@@ -339,7 +340,10 @@ static void load_balance_wrr(void)
 		return;
 	}
 
+	/* Disable interrupts */
 	local_irq_save(irq_flags);
+
+	/* Atomically lock two runqueues, because we're trying to write on the runqueues */
 	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
 	update_rq_clock(cpu_rq(max_cpu));
 	update_rq_clock(cpu_rq(min_cpu));
@@ -388,6 +392,7 @@ static void load_balance_wrr(void)
 	max_task->on_rq = TASK_ON_RQ_QUEUED;
 	check_preempt_curr(cpu_rq(min_cpu), max_task, 0);
 
+	/* Print logs */
 	printk(KERN_DEBUG
 	       "[WRR LOAD BALANCING] jiffies: %Ld\n"
 	       "[WRR LOAD BALANCING] max_cpu: %d, total_weight: %u\n"
@@ -415,7 +420,7 @@ spinlock_t wrr_balancer_lock;
 /// @brief Trigger the SCHED_SOFTIRQ(run_load_balance_wrr) if it is time to do periodic load balancing.
 void trigger_load_balance_wrr(void)
 {
-	/* Spinlock is required to make sure only one CPU actualy does load balancing. */
+	/* Spinlock is required to make sure only one CPU actually does load balancing. */
 	spin_lock(&wrr_balancer_lock);
 
 	if (time_after_eq(jiffies, next_balance_wrr)) {
@@ -432,6 +437,7 @@ void trigger_load_balance_wrr(void)
 
 #endif /* SMP */
 
+/// @brief Initialize the spinlock for load balancer, and initialize the timer for periodic load balancing.
 __init void init_sched_wrr_class(void)
 {
 #ifdef CONFIG_SMP
