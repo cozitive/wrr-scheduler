@@ -298,8 +298,8 @@ const struct sched_class wrr_sched_class = {
 static void load_balance_wrr(void)
 {
 	int is_first_online_cpu = 1; // Flag variable for `for_each_online_cpu` loop
-	unsigned int temp_cpu, max_cpu, min_cpu;
-	unsigned int temp_total, max_total, min_total;
+	unsigned int temp_cpu, max_cpu = 1000, min_cpu = 1000;
+	unsigned int temp_total, max_total = 0, min_total = 0;
 	struct sched_wrr_entity *temp_wrr_se;
 
 	/* Weight of the task with the highest weight on max_cpu */
@@ -309,8 +309,9 @@ static void load_balance_wrr(void)
 	struct task_struct *max_task = NULL;
 	struct task_struct *temp_task;
 
-	struct rq_flags rf;
+	unsigned long irq_flags;
 
+	/* RCU read lock, to synchronize access to multiple CPUs */
 	rcu_read_lock();
 
 	/* Iterate over all online cpus */
@@ -339,8 +340,13 @@ static void load_balance_wrr(void)
 		return;
 	}
 
-	local_irq_disable();
-	rq_lock(cpu_rq(max_cpu), &rf);
+	/* Disable interrupts */
+	local_irq_save(irq_flags);
+
+	/* Atomically lock two runqueues, because we're trying to write on the runqueues */
+	double_rq_lock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+	update_rq_clock(cpu_rq(max_cpu));
+	update_rq_clock(cpu_rq(min_cpu));
 
 	/* Choose the task with the highest weight on max_cpu */
 	list_for_each_entry (temp_wrr_se, &(cpu_rq(max_cpu)->wrr.queue),
@@ -349,7 +355,7 @@ static void load_balance_wrr(void)
 			temp_task = wrr_task_of(temp_wrr_se);
 
 			/* If the task is currently running, continue */
-			if (temp_task == cpu_rq(max_cpu)->curr)
+			if (task_running(cpu_rq(max_cpu), temp_task))
 				continue;
 
 			/* Migration should not make the total weight of min_cpu equal to or greater than that of max_cpu */
@@ -370,8 +376,8 @@ static void load_balance_wrr(void)
 
 	/* No transferable task exists, return */
 	if (max_task == NULL) {
-		rq_unlock(cpu_rq(max_cpu), &rf);
-		local_irq_enable();
+		double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+		local_irq_restore(irq_flags);
 		return;
 	}
 
@@ -381,15 +387,12 @@ static void load_balance_wrr(void)
 	max_task->on_rq = TASK_ON_RQ_MIGRATING;
 	deactivate_task(cpu_rq(max_cpu), max_task, DEQUEUE_NOCLOCK);
 	set_task_cpu(max_task, min_cpu);
-	rq_unlock(cpu_rq(max_cpu), &rf);
 
-	rq_lock(cpu_rq(min_cpu), &rf);
 	activate_task(cpu_rq(min_cpu), max_task, ENQUEUE_NOCLOCK);
 	max_task->on_rq = TASK_ON_RQ_QUEUED;
 	check_preempt_curr(cpu_rq(min_cpu), max_task, 0);
 
-	rq_unlock(cpu_rq(min_cpu), &rf);
-
+	/* Print logs */
 	printk(KERN_DEBUG
 	       "[WRR LOAD BALANCING] jiffies: %Ld\n"
 	       "[WRR LOAD BALANCING] max_cpu: %d, total_weight: %u\n"
@@ -398,7 +401,9 @@ static void load_balance_wrr(void)
 	       (long long)(jiffies), max_cpu, max_total, min_cpu, min_total,
 	       max_task->comm, max_weight);
 
-	local_irq_enable();
+	double_rq_unlock(cpu_rq(max_cpu), cpu_rq(min_cpu));
+
+	local_irq_restore(irq_flags);
 }
 
 static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
@@ -407,7 +412,7 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 }
 
 /* Next time to do periodic load balancing */
-volatile unsigned long next_balance_wrr = 0; // LB_TODO: jiffies overflow 문제 해결!!!!!! 꼭해야함!!!!!!!!!!
+volatile unsigned long next_balance_wrr = 0;
 
 /* Spinlock for load balancing */
 spinlock_t wrr_balancer_lock; 
@@ -415,7 +420,7 @@ spinlock_t wrr_balancer_lock;
 /// @brief Trigger the SCHED_SOFTIRQ(run_load_balance_wrr) if it is time to do periodic load balancing.
 void trigger_load_balance_wrr(void)
 {
-	/* Spinlock is required to make sure only one CPU actualy does load balancing. */
+	/* Spinlock is required to make sure only one CPU actually does load balancing. */
 	spin_lock(&wrr_balancer_lock);
 
 	if (time_after_eq(jiffies, next_balance_wrr)) {
@@ -432,6 +437,7 @@ void trigger_load_balance_wrr(void)
 
 #endif /* SMP */
 
+/// @brief Initialize the spinlock for load balancer, and initialize the timer for periodic load balancing.
 __init void init_sched_wrr_class(void)
 {
 #ifdef CONFIG_SMP
