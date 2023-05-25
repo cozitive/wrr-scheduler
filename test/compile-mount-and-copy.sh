@@ -16,7 +16,6 @@ make "${files[@]}"
 mkdir ./mntdir
 sudo mount ../tizen-image/rootfs.img ./mntdir
 sudo cp "${files[@]}" ./mntdir/root
-sudo cp "${files[@]}" ./mntdir/opt/usr/home/owner
 
 sudo umount ./mntdir
 rmdir ./mntdir
