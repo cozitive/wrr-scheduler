@@ -62,8 +62,6 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 	wrr_se->weight += weight_diff;
 	wrr_rq->total_weight += weight_diff;
 
-	// update task's runtime
-	update_curr_wrr(rq);
 
 	task_rq_unlock(rq, p, &rf);
 
