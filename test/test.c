@@ -28,7 +28,10 @@ int main(int argc, char *argv[])
 
 	pid_t pid = getpid();
 	for (int weight = 1; weight <= MAX_WEIGHT; weight++) {
-		sched_setweight(pid, weight);
+		if (sched_setweight(pid, weight) != 0) {
+			perror("sched_setweight()");
+			return 0;
+		}
 
 		struct timeval start, end;
 		double elapsed;
