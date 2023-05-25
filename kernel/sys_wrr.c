@@ -56,14 +56,18 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 	}
 
 	rq = task_rq_lock(p, &rf);
-	rcu_read_unlock(); // No deadlock problem, because it is rcu read lock, not mutex
 
 	// change weight
 	wrr_rq = &rq->wrr;
 	wrr_se->weight += weight_diff;
 	wrr_rq->total_weight += weight_diff;
 
+	// update task's runtime
+	update_curr_wrr(rq);
+
 	task_rq_unlock(rq, p, &rf);
+
+	rcu_read_unlock();
 
 	return 0;
 }
