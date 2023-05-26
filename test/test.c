@@ -11,8 +11,6 @@
 #define MAX_WEIGHT 20
 #define TRIAL_COUNT 3
 
-//double turnaround[MAX_WEIGHT];
-
 void factorize(int x);
 
 int main(int argc, char *argv[])
@@ -44,7 +42,6 @@ int main(int argc, char *argv[])
 
 		elapsed = (double)(end.tv_usec - start.tv_usec) / 1000000 + (double)(end.tv_sec - start.tv_sec);
 		printf("[%d] weight %2d: %lf secs\n", weight, weight, elapsed);
-		//turnaround[weight - 1] = elapsed;
 	}
 
 	return 0;
@@ -55,14 +52,10 @@ void factorize(int x)
 	int div = 2;
 	int is_first = 1;
 
-	// printf("%d = ", x);
 	while (x > 1) {
 		if (x % div == 0) {
 			if (is_first) {
-				// printf("%d", div);
 				is_first = 0;
-			} else {
-				// printf(" * %d", div);
 			}
 			x /= div;
 		} else {
