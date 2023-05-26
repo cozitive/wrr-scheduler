@@ -141,8 +141,10 @@ static struct task_struct *pick_next_task_wrr(struct rq *rq, struct task_struct 
 	struct wrr_rq *wrr_rq = &rq->wrr;
 	struct sched_wrr_entity *wrr_se;
 
+	/* Put previous task to the end of the queue */
 	put_prev_task(rq, prev);
 
+	/* Pick the first task from the queue */
 	wrr_se = list_first_entry_or_null(&wrr_rq->queue, struct sched_wrr_entity, run_list);
 	if (!wrr_se)
 		return NULL;
@@ -170,9 +172,14 @@ static int select_task_rq_wrr(struct task_struct *p, int cpu, int sd_flag, int w
 	unsigned int min_cpu_index = -1;
 	unsigned int min_total_weight = UINT_MAX;
 
+	/* RCU read lock is needed because we read data from multiple CPUs */
 	rcu_read_lock();
 	for_each_online_cpu(cpu) {
 		struct wrr_rq *wrr_rq = &cpu_rq(cpu)->wrr;
+		/*
+			1. The CPU affinity constraint should be satisfied.
+			2. We should select a CPU with minimum total weight.
+		*/
 		if (cpumask_test_cpu(cpu, &p->cpus_allowed) && (wrr_rq->total_weight < min_total_weight)) {
 			min_cpu_index = cpu;
 			min_total_weight = wrr_rq->total_weight;
@@ -225,12 +232,18 @@ static void task_tick_wrr(struct rq *rq, struct task_struct *p, int queued)
 	if (curr->sched_class != &wrr_sched_class)
 		return;
 
+	/* 
+		Decrement time slice and check whether there is remaining time slice.
+		If so, return. Otherwise(It's time to preempt) requeue the current task.
+	 */
 	if (--wrr_se->time_slice > 0) {
 		return;
 	}
 
+	/* Re-initialize the time slice. */
 	wrr_se->time_slice = wrr_se->weight * WRR_TIMESLICE;
 
+	/* Requeue the task. */
 	if (wrr_se->run_list.prev != wrr_se->run_list.next) {
 		requeue_task_wrr(rq, p);
 		resched_curr(rq);
