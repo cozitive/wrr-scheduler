@@ -9,10 +9,14 @@ sudo ./build-rpi3.sh
 sudo ./setup-images.sh
 ```
 
-### Test
+### Turnaround Time Test
 ```shell
 test/compile-mount-and-copy.sh
-./test  # turnaround time test
+./dummy 20 0    # dummy at CPU 0
+./dummy 20 1    # dummy at CPU 1
+./dummy 20 2    # dummy at CPU 2
+./dummy 20 3    # dummy at CPU 3
+./test          # turnaround time test
 ```
 
 ## WRR Scheduler Class
