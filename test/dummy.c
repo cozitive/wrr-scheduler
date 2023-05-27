@@ -7,20 +7,23 @@
 
 #define MAX_WEIGHT 20
 
-// Dummy does nothing, only spins
+/// @brief Background dummy process for turnaround time test.
 int main(int argc, char *argv[])
 {
-	if (getuid() != 0) {
-		printf("should be run in root user\n");
-		return 0;
-	}
+    if (getuid() != 0) {
+        printf("should be run in root user\n");
+        return 0;
+    }
 
-    // Set dummy's weight to given weight or default MAX_WEIGHT
+    // Set dummy's weight to given weight or default MAX_WEIGHT.
     int weight = (argc > 1) ? atoi(argv[1]) : MAX_WEIGHT;
     int pid = getpid();
-    sched_setweight(pid, weight);
+    if (sched_setweight(pid, weight) != 0) {
+        perror("sched_setweight()");
+        return 0;
+    }
 
-    // If there's given CPU #, set only affinity to given CPU
+    // If there's given CPU #, set only affinity to given CPU.
     if (argc == 3) {
         int cpu = atoi(argv[2]);
 
