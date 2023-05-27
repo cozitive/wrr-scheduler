@@ -162,6 +162,11 @@ static inline int fair_policy(int policy)
 	return policy == SCHED_NORMAL || policy == SCHED_BATCH;
 }
 
+static inline int wrr_policy(int policy)
+{
+	return policy == SCHED_WRR;
+}
+
 static inline int rt_policy(int policy)
 {
 	return policy == SCHED_FIFO || policy == SCHED_RR;
@@ -173,8 +178,13 @@ static inline int dl_policy(int policy)
 }
 static inline bool valid_policy(int policy)
 {
-	return idle_policy(policy) || fair_policy(policy) ||
+	return idle_policy(policy) || fair_policy(policy) || wrr_policy(policy) ||
 		rt_policy(policy) || dl_policy(policy);
+}
+
+static inline int task_has_wrr_policy(struct task_struct *p)
+{
+	return wrr_policy(p->policy);
 }
 
 static inline int task_has_rt_policy(struct task_struct *p)
@@ -677,6 +687,13 @@ struct dl_rq {
 	u64			bw_ratio;
 };
 
+/* WRR related fields in a runqueue */
+struct wrr_rq {
+	struct list_head queue;     // head of task queue
+	unsigned int nr_running;    // # of running tasks
+	unsigned int total_weight;  // total weight of tasks on the queue
+};
+
 #ifdef CONFIG_FAIR_GROUP_SCHED
 /* An entity is a task if it doesn't "own" a runqueue */
 #define entity_is_task(se)	(!se->my_q)
@@ -808,6 +825,7 @@ struct rq {
 	struct cfs_rq		cfs;
 	struct rt_rq		rt;
 	struct dl_rq		dl;
+	struct wrr_rq 		wrr;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* list of leaf cfs_rq on this CPU: */
@@ -1585,6 +1603,7 @@ extern const struct sched_class dl_sched_class;
 extern const struct sched_class rt_sched_class;
 extern const struct sched_class fair_sched_class;
 extern const struct sched_class idle_sched_class;
+extern const struct sched_class wrr_sched_class;
 
 
 #ifdef CONFIG_SMP
@@ -1592,6 +1611,7 @@ extern const struct sched_class idle_sched_class;
 extern void update_group_capacity(struct sched_domain *sd, int cpu);
 
 extern void trigger_load_balance(struct rq *rq);
+extern void trigger_load_balance_wrr(void);
 
 extern void set_cpus_allowed_common(struct task_struct *p, const struct cpumask *new_mask);
 
@@ -1631,6 +1651,7 @@ extern void update_max_interval(void);
 extern void init_sched_dl_class(void);
 extern void init_sched_rt_class(void);
 extern void init_sched_fair_class(void);
+extern void init_sched_wrr_class(void);
 
 extern void reweight_task(struct task_struct *p, int prio);
 
@@ -2044,6 +2065,7 @@ extern struct sched_entity *__pick_last_entity(struct cfs_rq *cfs_rq);
 #ifdef	CONFIG_SCHED_DEBUG
 extern bool sched_debug_enabled;
 
+extern void print_wrr_stats(struct seq_file *m, int cpu);
 extern void print_cfs_stats(struct seq_file *m, int cpu);
 extern void print_rt_stats(struct seq_file *m, int cpu);
 extern void print_dl_stats(struct seq_file *m, int cpu);
@@ -2059,6 +2081,7 @@ print_numa_stats(struct seq_file *m, int node, unsigned long tsf,
 #endif /* CONFIG_NUMA_BALANCING */
 #endif /* CONFIG_SCHED_DEBUG */
 
+extern void init_wrr_rq(struct wrr_rq *wrr_rq);
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq);
 extern void init_dl_rq(struct dl_rq *dl_rq);

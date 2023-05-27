@@ -567,6 +567,16 @@ struct sched_dl_entity {
 	struct hrtimer inactive_timer;
 };
 
+struct sched_wrr_entity {
+	unsigned int weight;
+	unsigned int time_slice;
+	struct list_head run_list;
+	unsigned short on_rq;
+};
+
+#define WRR_DEFAULT_WEIGHT 10
+#define WRR_TIMESLICE (10 * HZ / 1000) // 10ms
+
 union rcu_special {
 	struct {
 		u8			blocked;
@@ -641,6 +651,7 @@ struct task_struct {
 	int				normal_prio;
 	unsigned int			rt_priority;
 
+
 	const struct sched_class	*sched_class;
 	struct sched_entity		se;
 	struct sched_rt_entity		rt;
@@ -648,6 +659,8 @@ struct task_struct {
 	struct task_group		*sched_task_group;
 #endif
 	struct sched_dl_entity		dl;
+
+	struct sched_wrr_entity		wrr;
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	/* List of struct preempt_notifier: */

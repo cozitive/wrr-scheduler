@@ -455,16 +455,18 @@ print_task(struct seq_file *m, struct rq *rq, struct task_struct *p)
 	else
 		SEQ_printf(m, " %c", task_state_to_char(p));
 
-	SEQ_printf(m, "%15s %5d %9Ld.%06ld %9Ld %5d ",
-		p->comm, task_pid_nr(p),
-		SPLIT_NS(p->se.vruntime),
-		(long long)(p->nvcsw + p->nivcsw),
-		p->prio);
+	// SEQ_printf(m, "%15s %5d %9Ld.%06ld %9Ld %5d ",
+	// 	p->comm, task_pid_nr(p),
+	// 	SPLIT_NS(p->se.vruntime),
+	// 	(long long)(p->nvcsw + p->nivcsw),
+	// 	p->prio);
 
-	SEQ_printf(m, "%9Ld.%06ld %9Ld.%06ld %9Ld.%06ld",
-		SPLIT_NS(schedstat_val_or_zero(p->se.statistics.wait_sum)),
-		SPLIT_NS(p->se.sum_exec_runtime),
-		SPLIT_NS(schedstat_val_or_zero(p->se.statistics.sum_sleep_runtime)));
+	// SEQ_printf(m, "%9Ld.%06ld %9Ld.%06ld %9Ld.%06ld",
+	// 	SPLIT_NS(schedstat_val_or_zero(p->se.statistics.wait_sum)),
+	// 	SPLIT_NS(p->se.sum_exec_runtime),
+	// 	SPLIT_NS(schedstat_val_or_zero(p->se.statistics.sum_sleep_runtime)));
+
+	SEQ_printf(m, "%15s %5d %6d %7d %10d %7d", p->comm, task_pid_nr(p), p->prio, p->wrr.weight, p->wrr.time_slice, p->policy);
 
 #ifdef CONFIG_NUMA_BALANCING
 	SEQ_printf(m, " %d %d", task_node(p), task_numa_group_id(p));
@@ -482,8 +484,11 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 
 	SEQ_printf(m, "\n");
 	SEQ_printf(m, "runnable tasks:\n");
-	SEQ_printf(m, " S           task   PID         tree-key  switches  prio"
-		   "     wait-time             sum-exec        sum-sleep\n");
+	// SEQ_printf(m, " S           task   PID         tree-key  switches  prio"
+	// 	   "     wait-time             sum-exec        sum-sleep     weight  timeslice\n");
+	// SEQ_printf(m, "-------------------------------------------------------"
+	// 	   "----------------------------------------------------\n");
+	SEQ_printf(m, " S           task   PID   prio  weight  timeslice  policy\n");
 	SEQ_printf(m, "-------------------------------------------------------"
 		   "----------------------------------------------------\n");
 
@@ -495,6 +500,13 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 		print_task(m, rq, p);
 	}
 	rcu_read_unlock();
+}
+
+void print_wrr_rq(struct seq_file *m, int cpu, struct wrr_rq *wrr_rq) {
+	SEQ_printf(m, "\n");
+	SEQ_printf(m, "wrr_rq[%d]:\n", cpu);
+	SEQ_printf(m, "  .%-30s: %d\n", "nr_running", wrr_rq->nr_running);
+	SEQ_printf(m, "  .%-30s: %d\n", "total_weight", wrr_rq->total_weight);
 }
 
 void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
@@ -691,6 +703,7 @@ do {									\
 #undef P
 
 	spin_lock_irqsave(&sched_debug_lock, flags);
+	print_wrr_stats(m, cpu);
 	print_cfs_stats(m, cpu);
 	print_rt_stats(m, cpu);
 	print_dl_stats(m, cpu);
