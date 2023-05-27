@@ -1,10 +1,16 @@
+/*
+ * WRR system calls to set/get weights
+ */
 #include <linux/cred.h>
 #include <linux/kernel.h>
 #include <linux/smp.h>
 #include <linux/syscalls.h>
-
 #include "sched/sched.h"
 
+///@brief Update the WRR weight of a task. (syscall #294)
+///@param pid target task's PID. PID 0 indicates the calling task.
+///@param weight the new weight.
+///@return 0 on success, or an error code on error.
 SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 {
 	unsigned int uid;
@@ -25,6 +31,7 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 		return -EINVAL;
 	}
 
+	// acquire RCU read lock (read task data from multiple CPUs)
 	rcu_read_lock();
 
 	// find task with the given pid
@@ -55,6 +62,7 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 		return -EPERM;
 	}
 
+	// acquire task & rq lock (change task on a runqueue)
 	rq = task_rq_lock(p, &rf);
 
 	// change weight
@@ -62,14 +70,16 @@ SYSCALL_DEFINE2(sched_setweight, pid_t, pid, unsigned int, weight)
 	wrr_se->weight += weight_diff;
 	wrr_rq->total_weight += weight_diff;
 
-
+	// release task & rq lock and RCU read lock
 	task_rq_unlock(rq, p, &rf);
-
 	rcu_read_unlock();
 
 	return 0;
 }
 
+///@brief Query the WRR weight of a task. (syscall #295)
+///@param pid target task's PID. PID 0 indicates the calling task.
+///@return the queried weight value on success, or an error code on error.
 SYSCALL_DEFINE1(sched_getweight, pid_t, pid)
 {
 	struct task_struct *p;
@@ -80,6 +90,7 @@ SYSCALL_DEFINE1(sched_getweight, pid_t, pid)
 		return -EINVAL;
 	}
 
+	// acquire RCU read lock (read task data from multiple CPUs)
 	rcu_read_lock();
 
 	// find task with the given pid
@@ -95,8 +106,10 @@ SYSCALL_DEFINE1(sched_getweight, pid_t, pid)
 		return -EINVAL;
 	}
 
+	// get weight of the given task
 	ret_val = p->wrr.weight;
 
+	// release RCU read lock
 	rcu_read_unlock();
 
 	return ret_val;
