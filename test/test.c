@@ -15,16 +15,19 @@ void factorize(int x);
 
 int main(int argc, char *argv[])
 {
+	// If target # is not given, X_DEFAULT is target
     int x = (argc > 1) ? atoi(argv[1]) : X_DEFAULT;
 
 	if (getuid() != 0) {
 		printf("WRR turnaround time test should be run in root user\n");
 		return 0;
 	}
-
+	
 	printf("WRR turnaround time test: prime factoriazation of %d\n\n", x);
 
 	pid_t pid = getpid();
+
+	// Set task weight from 1 to 20 by each trial
 	for (int weight = 1; weight <= MAX_WEIGHT; weight++) {
 		if (sched_setweight(pid, weight) != 0) {
 			perror("sched_setweight()");
@@ -36,6 +39,7 @@ int main(int argc, char *argv[])
 		
 		while (sched_getweight(getpid()) != weight);
 		
+		// Do prime factorization 'TRIAL_COUNT' times and print average time of trial
 		for (int i = 0; i < TRIAL_COUNT; i++) {
 			gettimeofday(&start, NULL);
 			factorize(x);
