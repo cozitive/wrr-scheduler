@@ -72,8 +72,6 @@ static inline void dec_wrr_tasks(struct sched_wrr_entity *wrr_se, struct wrr_rq 
 	wrr_se->on_rq = 0;
 	wrr_rq->nr_running -= 1;
 	wrr_rq->total_weight -= wrr_se->weight;
-	WARN_ON(wrr_rq->nr_running < 0);
-	WARN_ON(wrr_rq->total_weight < 0);
 }
 
 /// @brief Enqueue a task to WRR runqueue.
