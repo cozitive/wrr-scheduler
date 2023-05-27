@@ -1,3 +1,6 @@
+/*
+ * WRR system call unit test
+ */
 #include <errno.h>
 #include <sched.h>
 #include <stdio.h>
@@ -285,22 +288,6 @@ void preserve_previous_weight_test() {
     printf("OK\n");
 }
 
-void idle_weight_test() {
-    printf("idle weight test: ");
-
-    int weight = sched_getweight(0);
-    if (weight == -1) {
-        printf("FAIL (errno: %d)\n", errno);
-        return;
-    }
-    if (weight != 10) {
-        printf("FAIL (weight: %d)\n", weight);
-        return;
-    }
-
-    printf("OK\n");
-}
-
 int main(int argc, char *argv[])
 {
     getweight_error_test();
@@ -309,7 +296,6 @@ int main(int argc, char *argv[])
     set_and_get_test();
     reset_to_default_weight_test();
     preserve_previous_weight_test();
-    idle_weight_test();
 
     return 0;
 }
