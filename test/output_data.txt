@@ -1,0 +1,87 @@
+- no dummy
+[1] weight 1: 1.940769 secs
+[2] weight 2: 1.950428 secs
+[3] weight 3: 1.950020 secs
+[4] weight 4: 1.926048 secs
+[5] weight 5: 1.941274 secs
+[6] weight 6: 1.941467 secs
+[7] weight 7: 1.952589 secs
+[8] weight 8: 1.955855 secs
+[9] weight 9: 1.977696 secs
+[10] weight 10: 1.918815 secs
+[11] weight 11: 1.916895 secs
+[12] weight 12: 1.919952 secs
+[13] weight 13: 1.917086 secs
+[14] weight 14: 1.918255 secs
+[15] weight 15: 1.921710 secs
+[16] weight 16: 1.922514 secs
+[17] weight 17: 1.919084 secs
+[18] weight 18: 1.923074 secs
+[19] weight 19: 1.934307 secs
+[20] weight 20: 1.927747 secs
+
+- weight 1
+[1] weight 1: 4.694869 secs
+[2] weight 2: 3.441244 secs
+[3] weight 3: 3.091209 secs
+[4] weight 4: 2.929085 secs
+[5] weight 5: 2.834909 secs
+[6] weight 6: 2.752586 secs
+[7] weight 7: 2.641579 secs
+[8] weight 8: 2.580430 secs
+[9] weight 9: 2.491607 secs
+[10] weight 10: 2.452942 secs
+[11] weight 11: 2.436691 secs
+[12] weight 12: 2.424401 secs
+[13] weight 13: 2.385407 secs
+[14] weight 14: 2.377898 secs
+[15] weight 15: 2.384147 secs
+[16] weight 16: 2.363297 secs
+[17] weight 17: 2.350266 secs
+[18] weight 18: 2.342894 secs
+[19] weight 19: 2.343943 secs
+[20] weight 20: 2.335260 secs
+
+- weight 10
+[1] weight 1: 23.703942 secs
+[2] weight 2: 13.070948 secs
+[3] weight 3: 9.280478 secs
+[4] weight 4: 7.544307 secs
+[5] weight 5: 6.467890 secs
+[6] weight 6: 5.777546 secs
+[7] weight 7: 5.203127 secs
+[8] weight 8: 4.918138 secs
+[9] weight 9: 4.625811 secs
+[10] weight 10: 4.309250 secs
+[11] weight 11: 4.241250 secs
+[12] weight 12: 4.105829 secs
+[13] weight 13: 4.010024 secs
+[14] weight 14: 3.907229 secs
+[15] weight 15: 3.886983 secs
+[16] weight 16: 3.784789 secs
+[17] weight 17: 3.693942 secs
+[18] weight 18: 3.631002 secs
+[19] weight 19: 3.570960 secs
+[20] weight 20: 3.489818 secs
+
+- weight 20
+[1] weight 1: 45.600103 secs
+[2] weight 2: 24.248577 secs
+[3] weight 3: 16.630364 secs
+[4] weight 4: 13.057163 secs
+[5] weight 5: 11.048213 secs
+[6] weight 6: 9.525745 secs
+[7] weight 7: 8.665852 secs
+[8] weight 8: 8.140082 secs
+[9] weight 9: 7.394486 secs
+[10] weight 10: 7.032465 secs
+[11] weight 11: 6.520224 secs
+[12] weight 12: 6.257162 secs
+[13] weight 13: 5.912297 secs
+[14] weight 14: 5.550125 secs
+[15] weight 15: 5.293577 secs
+[16] weight 16: 5.077676 secs
+[17] weight 17: 4.912445 secs
+[18] weight 18: 4.806772 secs
+[19] weight 19: 4.693037 secs
+[20] weight 20: 4.562935 secs

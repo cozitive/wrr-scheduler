@@ -21,6 +21,9 @@ test/compile-mount-and-copy.sh
 ./dummy 20 3    # dummy at CPU 3
 ./test          # turnaround time test
 ```
+command line below is usage of `dummy` and `test` in QEMU, parameter* is optional
+- ./dummy weight* CPU*
+- ./test target_num*
 
 ## WRR Scheduler Class
 ### Data Structures
