@@ -7,9 +7,9 @@
 #include <sys/wait.h>
 #include "wrappers.h"
 
-#define X_DEFAULT 999999937
+#define X_DEFAULT 300000007
 #define MAX_WEIGHT 20
-#define TRIAL_COUNT 3
+#define TRIAL_COUNT 5
 
 void factorize(int x);
 
@@ -32,16 +32,17 @@ int main(int argc, char *argv[])
 		}
 
 		struct timeval start, end;
-		double elapsed;
+		double elapsed = 0;
 		
 		while (sched_getweight(getpid()) != weight);
-
-		gettimeofday(&start, NULL);
-		factorize(x);
-		gettimeofday(&end, NULL);
-
-		elapsed = (double)(end.tv_usec - start.tv_usec) / 1000000 + (double)(end.tv_sec - start.tv_sec);
-		printf("[%d] weight %2d: %lf secs\n", weight, weight, elapsed);
+		
+		for (int i = 0; i < TRIAL_COUNT; i++) {
+			gettimeofday(&start, NULL);
+			factorize(x);
+			gettimeofday(&end, NULL);
+			elapsed += (double)(end.tv_usec - start.tv_usec) / 1000000 + (double)(end.tv_sec - start.tv_sec);
+		}
+		printf("[%d] weight %2d: %lf secs\n", weight, weight, elapsed/TRIAL_COUNT);
 	}
 
 	return 0;
