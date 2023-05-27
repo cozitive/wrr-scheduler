@@ -13,7 +13,7 @@
 
 void factorize(int x);
 
-/// @brief Do prime factorization with different WRR weight.
+/// @brief Do prime factorization with different WRR weight, and measure each turnaround time.
 int main(int argc, char *argv[])
 {
     // The program can only be executed by root user.
