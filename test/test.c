@@ -50,13 +50,8 @@ int main(int argc, char *argv[])
 void factorize(int x)
 {
 	int div = 2;
-	int is_first = 1;
-
 	while (x > 1) {
 		if (x % div == 0) {
-			if (is_first) {
-				is_first = 0;
-			}
 			x /= div;
 		} else {
 			div++;
