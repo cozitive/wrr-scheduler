@@ -28,6 +28,6 @@ First, we executed prime factorization `test` alone. As a result, because there'
 So, we decided to run spinning `dummy` tasks at background to all `CPU`s. Then run `test` and measured execution time. we did 3 trials with different `dummy` weight, 1, 10 and 20.
 
 The graph below shows excution time based on task weight.
-<img width="789" alt="KakaoTalk_Photo_2023-05-27-19-01-36" src="https://github.com/swsnu/project-3-hello-scheduler-team-6/assets/69378301/787d09d7-8d37-44c7-8548-32e1e0a77521">
+- The color of graph is differentiated by dummy task's weight.
 
-The color of graph is differentiated by dummy task's weight.
+<img width="789" alt="KakaoTalk_Photo_2023-05-27-19-01-36" src="https://github.com/swsnu/project-3-hello-scheduler-team-6/assets/69378301/787d09d7-8d37-44c7-8548-32e1e0a77521">
