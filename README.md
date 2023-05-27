@@ -12,6 +12,9 @@ sudo ./setup-images.sh
 ### Turnaround Time Test
 ```shell
 test/compile-mount-and-copy.sh
+./qemu.sh
+
+# in QEMU
 ./dummy 20 0    # dummy at CPU 0
 ./dummy 20 1    # dummy at CPU 1
 ./dummy 20 2    # dummy at CPU 2
