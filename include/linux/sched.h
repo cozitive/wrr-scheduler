@@ -567,11 +567,12 @@ struct sched_dl_entity {
 	struct hrtimer inactive_timer;
 };
 
+/* WRR related field in a task */
 struct sched_wrr_entity {
-	unsigned int weight;
-	unsigned int time_slice;
-	struct list_head run_list;
-	unsigned short on_rq;
+	unsigned int weight;		// WRR weight
+	unsigned int time_slice;	// remaining time slice
+	struct list_head run_list;	// list node used in a runqueue
+	unsigned short on_rq;		// 1 if task is on a runqueue, 0 otherwise
 };
 
 #define WRR_DEFAULT_WEIGHT 10
