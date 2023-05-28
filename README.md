@@ -20,10 +20,10 @@ test/compile-mount-and-copy.sh
 ./qemu.sh
 
 # in QEMU
-./dummy 20 0    # dummy at CPU 0
-./dummy 20 1    # dummy at CPU 1
-./dummy 20 2    # dummy at CPU 2
-./dummy 20 3    # dummy at CPU 3
+./dummy 20 0 &    # dummy at CPU 0
+./dummy 20 1 &    # dummy at CPU 1
+./dummy 20 2 &    # dummy at CPU 2
+./dummy 20 3 &    # dummy at CPU 3
 ./test          # turnaround time test
 ```
 command line below is usage of `dummy` and `test` in QEMU, parameters inside square brackets(`[]`) are optional
