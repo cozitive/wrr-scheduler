@@ -118,7 +118,7 @@ The start point of WRR scheduler load balancing is the `scheduler_tick()` functi
 
 ### How we keep track of load balance timing
 
-We made sure that load balancing occurs every 2000ms, only one CPU at a time. We achieved this by keeping a global variable named `next_balance_wrr`. `next_balance_wrr` is initialized with `jiffies + msecs_to_jiffies(2000)` at boot time by `init_sched_wrr_class()`. `scheduler_tick()` calls `triger_load_balance_wrr()` every tick, and `trigger_load_balance_wrr()` checks whether current time(`jiffies`) is past `next_balance_wrr` and if so, raises soft IRQ handler, which is registered as `run_load_balance_wrr()`. To make sure only one CPU actually does the load balancing at a time, we introduced a spinlock named `wrr_balancer_lock`.
+We made sure that load balancing occurs every 2000ms, only one CPU at a time. We achieved this by keeping a global variable named `next_balance_wrr`. `next_balance_wrr` is initialized with `jiffies + msecs_to_jiffies(2000)` at boot time by `init_sched_wrr_class()`. `scheduler_tick()` calls `trigger_load_balance_wrr()` every tick, and `trigger_load_balance_wrr()` checks whether current time(`jiffies`) is past `next_balance_wrr` and if so, raises soft IRQ handler, which is registered as `run_load_balance_wrr()`. To make sure only one CPU actually does the load balancing at a time, we introduced a spinlock named `wrr_balancer_lock`.
 
 ### Function Descriptions
 
@@ -157,7 +157,7 @@ In this phase, we do the following things atomically: 1. Choose an appropriate t
 8. Enable interrupts using `local_irq_restore()`.
 ## Turnaround Time Test
 
-- We take prime number `300000007` to prime factorization target number 
+- We take prime number `300000007` to prime factorization target number.
 - All test repeated 5 times and we measured average of the execution time.
 
 First, we executed prime factorization `test` alone. As a result, because there's rare interrupt to test, execution time was around 1.9 secs regardless of task weight
