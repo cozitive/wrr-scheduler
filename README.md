@@ -171,9 +171,7 @@ The graph below shows excution time based on task weight.
 
 ## Lessons Learned
 ### Lock Is Important
-
 We used two locks: RCU read lock and task/runqueue spinlock.
-
 - RCU read lock: read shared data (runqueue of other CPUs)
 - spinlock: write to shared data (task/runqueue of other CPUs)
 
