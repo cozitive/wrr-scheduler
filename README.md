@@ -10,6 +10,11 @@ sudo ./setup-images.sh
 ```
 
 ### Turnaround Time Test
+
+`test/compile-mount-and-copy.sh` compiles tests using `make`, mounts the image & copies the compiled test executables into the image, and unmounts the image.
+
+If you only want to compile the test, you can run `make` inside the `test` directory. 
+
 ```shell
 test/compile-mount-and-copy.sh
 ./qemu.sh
@@ -21,9 +26,9 @@ test/compile-mount-and-copy.sh
 ./dummy 20 3    # dummy at CPU 3
 ./test          # turnaround time test
 ```
-command line below is usage of `dummy` and `test` in QEMU, parameter* is optional
-- ./dummy weight* CPU*
-- ./test target_num*
+command line below is usage of `dummy` and `test` in QEMU, parameters inside square brackets(`[]`) are optional
+- `./dummy [WEIGHT] [CPU_TO_SET_AFFIITY]`
+- `./test [NUMBER_TO_FACTORIZE]`
 
 ## WRR Scheduler Class
 ### Data Structures
@@ -166,8 +171,8 @@ The graph below shows excution time based on task weight.
 
 ## Lessons Learned
 ### Lock Is Important
-We used two locks: RCU lock and task/runqueue spinlock.
-- RCU lock: read shared data (runqueue of other CPUs)
+We used two locks: RCU read lock and task/runqueue spinlock.
+- RCU read lock: read shared data (runqueue of other CPUs)
 - spinlock: write to shared data (task/runqueue of other CPUs)
 
 Locks are used in multiprocessor functions.
@@ -176,7 +181,7 @@ Locks are used in multiprocessor functions.
 - `sched_getweight()`: fetch a task from all CPUs
 - `load_balance_wrr()`: read all CPUs' total weights, and move a task from its runqueue to other runqueue
 
-The key was that RCU lock protects **only reading, not writing.** Even if RCU lock is held, appropriate spinlock must be acquired before the value of shared data change.
+The key was that RCU read lock protects **only reading, not writing.** Even if RCU read lock is held, appropriate spinlock must be acquired before the value of shared data change.
 
 ### Run**Queue**, Not RunStack!
 At first, `requeue_task_wrr()` called wrong list API by mistake.
