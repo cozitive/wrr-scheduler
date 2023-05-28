@@ -124,8 +124,32 @@ We made sure that load balancing occurs every 2000ms, only one CPU at a time. We
 - `load_balance_wrr()` : Function that actually does load balancing. Details will be provided in the next section.
 
 ### `load_balance_wrr()`
-To be added...
+Choosing target CPUs and doing the actual migration atomically is complicated since we have to hold RCU read lock and runqueue spinlocks for writing at once. Therefore, we chose a relaxed approach to divide the process into two separate atomic phases.
 
+#### Phase 1: Choose `max_cpu` and `min_cpu`
+
+Choosing `max_cpu` and `min_cpu` is done with following steps:
+
+1. Acquire RCU read lock with `rcu_read_lock()`, since we're reading data from multiple CPUs.
+2. Using `for_each_online_cpu()`, iterate over all online CPUs and choose `max_cpu` and `min_cpu`.
+3. Release RCU read lock with `rcu_read_unlock().`
+4. If `max_cpu == min_cpu`, this means that there is only one CPU in this system; thus no need for load balancing, return. Otherwise, proceed to Phase 2.
+
+#### Phase 2: Choose appropriate task and migrate
+
+In this phase, we do the following things atomically: 1. Choose an appropriate task from `max_cpu`, 2. Migrate the selected task to `min_cpu`. The steps are as follows:
+
+1. Disable interrupts using `local_irq_save()`.
+2. Atomically lock runqueues of `max_cpu` and `min_cpu` using `double_rq_lock()`.
+3. Iterating through the wrr runqueue struct of `max_cpu`, search for an appropriate task for migration that meets following conditions:
+   - The task should not be currently running,
+   - Migration should not make the total weight of `min_cpu` equal to or greater than that of `max_cpu`,
+   - The migration should not violate the task's CPU affinity.
+4. If no migratable task exists, return.
+5. Actually migrate the task from `max_cpu` to `min_cpu`. This is done by dequeueing the task from `max_cpu`, setting the CPU of the task with `set_task_cpu()`, and enqueueing the task to `min_cpu`.
+6. Print logs about the migration.
+7. Unlock runqueues of `max_cpu` and `min_cpu` using `double_rq_unlock()`.
+8. Enable interrupts using `local_irq_restore()`.
 ## Turnaround Time Test
 
 - We take prime number `300000007` to prime factorization target number 
