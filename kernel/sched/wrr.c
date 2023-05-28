@@ -423,7 +423,7 @@ static __latent_entropy void run_load_balance_wrr(struct softirq_action *h)
 }
 
 /* Next time to do periodic load balancing */
-volatile unsigned long next_balance_wrr = 0;
+volatile unsigned long next_balance_wrr;
 
 /* Spinlock for load balancing */
 spinlock_t wrr_balancer_lock; 
@@ -457,5 +457,8 @@ __init void init_sched_wrr_class(void)
 
 	/* Initialize timer */
 	open_softirq(SCHED_SOFTIRQ, run_load_balance_wrr);
+	
+	/* Set next load balance time to 2000ms after. */
+	next_balance_wrr = jiffies + msecs_to_jiffies(2000);
 #endif /* SMP */
 }
