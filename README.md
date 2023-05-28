@@ -109,6 +109,22 @@ There are system calls to update and query the weight of a WRR task.
 
 ## Load Balancing
 
+The start point of WRR scheduler load balancing is the `scheduler_tick()` function in `core.c`. We replaced the `trigger_load_balance()` call of CFS scheduler with `trigger_load_balance_wrr()` of WRR scheduler. The implementation of WRR load balancer was heavily inspired by CFS load balancer. Following are descriptions of functions related to load balancing in WRR scheduler.
+
+### How we keep track of load balance timing
+
+We made sure that load balancing occurs every 2000ms, only one CPU at a time. We achieved this by keeping a global variable named `next_balance_wrr`. `next_balance_wrr` is initialized with `jiffies + msecs_to_jiffies(2000)` at boot time by `init_sched_wrr_class()`. `scheduler_tick()` calls `triger_load_balance_wrr()` every tick, and `trigger_load_balance_wrr()` checks whether current time(`jiffies`) is past `next_balance_wrr` and if so, raises soft IRQ handler, which is registered as `run_load_balance_wrr()`. To make sure only one CPU actually does the load balancing at a time, we introduced a spinlock named `wrr_balancer_lock`.
+
+### Function Descriptions
+
+- `init_sched_wrr_class()` : Initialize `wrr_balancer_lock`, softIRQ handler(`run_load_balance_wrr()`), and `next_balance_wrr`. 
+
+- `trigger_load_balance_wrr()` : Called from `scheduler_tick()`. This function makes sure only one CPU enters the critical section of `wrr_balancer_lock`, checks whether `jiffies` is past `next_balance_wrr`, and raises the soft IRQ handler(`run_load_balance_wrr()`) registered formerly.
+- `run_load_balance_wrr()` : Soft IRQ handler called when it is time to load balance. This function simply calls `load_balance_wrr()`.
+- `load_balance_wrr()` : Function that actually does load balancing. Details will be provided in the next section.
+
+### `load_balance_wrr()`
+To be added...
 
 ## Turnaround Time Test
 
