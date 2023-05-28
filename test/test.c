@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     // If target # is not given, X_DEFAULT is target.
     int x = (argc > 1) ? atoi(argv[1]) : X_DEFAULT;
 
-    printf("WRR turnaround time test: prime factoriazation of %d\n\n", x);
+    printf("WRR turnaround time test: prime factoriazation of %d\n", x);
 
     pid_t pid = getpid();
 
@@ -35,34 +35,46 @@ int main(int argc, char *argv[])
             perror("sched_setweight()");
             return 0;
         }
-
-        struct timeval start, end;
-        double elapsed = 0;
-
         while (sched_getweight(pid) != weight);
 
+        printf("===========================================\n");
+        printf("[weight %d]\n", weight);
+
         // Do prime factorization 'TRIAL_COUNT' times and print average time of trial.
+        struct timeval start, end;
+        double total = 0;
         for (int i = 0; i < TRIAL_COUNT; i++) {
             gettimeofday(&start, NULL);
             factorize(x);
             gettimeofday(&end, NULL);
-            elapsed += (double)(end.tv_usec - start.tv_usec) / 1000000 + (double)(end.tv_sec - start.tv_sec);
+            double elapsed = (double)(end.tv_usec - start.tv_usec) / 1000000 + (double)(end.tv_sec - start.tv_sec);
+            total += elapsed;
+            printf("[%d] %lf secs\n", i + 1, elapsed);
         }
-        printf("[%d] weight %2d: %lf secs\n", weight, weight, elapsed/TRIAL_COUNT);
+        printf("[avg] %lf secs\n", total / TRIAL_COUNT);
     }
 
     return 0;
 }
 
-/// @brief Calculate prime factorization of `x`, not saving the result.
+/// @brief Calculate prime factorization of `x`.
 void factorize(int x)
 {
     int div = 2;
+    int is_first = 1;
+
+    printf("%d =", x);
     while (x > 1) {
         if (x % div == 0) {
+            if (!is_first) {
+                printf(" *");
+            }
             x /= div;
+            is_first = 0;
+            printf(" %d", div);
         } else {
             div++;
         }
     }
+    printf("\t");
 }
