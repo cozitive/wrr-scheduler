@@ -11,7 +11,7 @@ sudo ./setup-images.sh
 
 ### Turnaround Time Test
 
-`test/compile-mount-and-copy.sh` compiles tests using `make`, mounts the image & copies the compiled test executables, and unmounts the image.
+`test/compile-mount-and-copy.sh` compiles tests using `make`, mounts the image & copies the compiled test executables into the image, and unmounts the image.
 
 If you only want to compile the test, you can run `make` inside the `test` directory. 
 
@@ -26,9 +26,7 @@ test/compile-mount-and-copy.sh
 ./dummy 20 3    # dummy at CPU 3
 ./test          # turnaround time test
 ```
-
 command line below is usage of `dummy` and `test` in QEMU, parameters inside square brackets(`[]`) are optional
-
 - `./dummy [WEIGHT] [CPU_TO_SET_AFFIITY]`
 - `./test [NUMBER_TO_FACTORIZE]`
 
